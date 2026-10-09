@@ -1,0 +1,15 @@
+node_modules/
+target/
+!target/idl/
+.anchor/
+test-ledger/
+.env
+.env.*
+!.env.example
+data/
+*.log
+.DS_Store
+dist/
+# Program and wallet keypairs never go in git.
+*-keypair.json
+keys/

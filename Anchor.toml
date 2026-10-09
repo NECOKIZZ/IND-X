@@ -1,0 +1,20 @@
+[toolchain]
+anchor_version = "1.2.1"
+package_manager = "pnpm"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+league = "8d88mxfH12NXWg9RfvkpFXztGBAkYMsbNxAXyfvwT3uA"
+
+[programs.devnet]
+league = "8d88mxfH12NXWg9RfvkpFXztGBAkYMsbNxAXyfvwT3uA"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "pnpm vitest run tests/program"
