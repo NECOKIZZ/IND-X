@@ -13,7 +13,12 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "server": "tsx --env-file-if-exists=.env server/src/api/main.ts",
     "keeper": "tsx --env-file-if-exists=.env server/src/keeper/cli.ts",
-    "local": "tsx scripts/local-demo.ts"
+    "dev": "LEAGUE_CLUSTER=lite LEAGUE_SCHEDULE=demo:10:20 tsx --env-file-if-exists=.env server/src/api/main.ts",
+    "deploy:localnet": "tsx scripts/deploy.ts localnet",
+    "deploy:devnet": "tsx scripts/deploy.ts devnet",
+    "deploy:mainnet": "tsx scripts/deploy.ts mainnet",
+    "validator": "scripts/local-validator.sh",
+    "bots": "tsx scripts/bots.ts"
   },
   "devDependencies": {
     "@anchor-lang/core": "1.2.1",

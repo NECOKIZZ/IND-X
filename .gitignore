@@ -13,3 +13,6 @@ dist/
 # Program and wallet keypairs never go in git.
 *-keypair.json
 keys/
+
+# Local deployments are recreated with every validator reset.
+deployments/localnet.json
