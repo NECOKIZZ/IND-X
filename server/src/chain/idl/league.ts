@@ -158,7 +158,9 @@ export type League = {
     {
       "name": "claim",
       "docs": [
-        "Claim the payout (or the refund of a void round). Closes the entry",
+        "Pay out an entry (its payout, or the stake of a void round) to its",
+        "owner. Anyone can call it (the keeper does, so winnings arrive on",
+        "their own); the money only ever goes to the owner. Closes the entry",
         "once any basket has gone back too."
       ],
       "discriminator": [
@@ -173,9 +175,12 @@ export type League = {
       ],
       "accounts": [
         {
-          "name": "user",
-          "writable": true,
+          "name": "signer",
           "signer": true
+        },
+        {
+          "name": "owner",
+          "writable": true
         },
         {
           "name": "config",
@@ -237,7 +242,7 @@ export type League = {
               },
               {
                 "kind": "account",
-                "path": "user"
+                "path": "owner"
               }
             ]
           }
