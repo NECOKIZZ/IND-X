@@ -1,0 +1,31 @@
+{
+  "name": "ind-x",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build:program": "anchor build && node scripts/copy-idl.mjs",
+    "test": "vitest run",
+    "test:program": "vitest run tests/program",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "server": "tsx --env-file-if-exists=.env server/src/api/main.ts",
+    "keeper": "tsx --env-file-if-exists=.env server/src/keeper/cli.ts",
+    "local": "tsx scripts/local-demo.ts"
+  },
+  "devDependencies": {
+    "@anchor-lang/core": "1.2.1",
+    "@indx/core": "workspace:*",
+    "@indx/server": "workspace:*",
+    "@solana/spl-token": "~0.4.15",
+    "@solana/web3.js": "^1.99.0",
+    "@types/node": "^22.20.5",
+    "bs58": "^6.0.0",
+    "litesvm": "^1.6.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.3"
+  }
+}
