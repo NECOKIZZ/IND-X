@@ -33,7 +33,17 @@ function Hero({ r }: { r: RoundView }) {
           </Text>
         </Link>
       </Row>
-      {r.phase === "open" || r.phase === "live" ? (
+      {(r.phase === "live" && r.serverTime >= r.end) || r.phase === "settling" ? (
+        <View>
+          <Text v="label" color={c.textMuted}>
+            The round is over
+          </Text>
+          <Text v="title">Settling results…</Text>
+          <Text v="small" color={c.textMuted}>
+            Closing prices are in. Payouts arrive in your wallet automatically.
+          </Text>
+        </View>
+      ) : r.phase === "open" || r.phase === "live" ? (
         <View>
           <Text v="label" color={c.textMuted}>
             {r.phase === "open" ? "Entries close in" : "Round ends in"}
