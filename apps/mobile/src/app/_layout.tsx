@@ -1,12 +1,11 @@
 import "@/lib/polyfills";
 import { useEffect, type ReactNode } from "react";
-import { useColorScheme } from "react-native";
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { dark, light } from "@/theme";
+import { AppearanceProvider, useAppearance, useColors } from "@/theme";
 import { ToastProvider } from "@/components/Toast";
 import { WalletProvider, useWallet } from "@/wallet/WalletProvider";
 import { useNotifications } from "@/lib/notifications";
@@ -23,8 +22,16 @@ function Notifications({ children }: { children: ReactNode }) {
 }
 
 export default function RootLayout() {
-  const scheme = useColorScheme();
-  const c = scheme === "dark" ? dark : light;
+  return (
+    <AppearanceProvider>
+      <App />
+    </AppearanceProvider>
+  );
+}
+
+function App() {
+  const { scheme } = useAppearance();
+  const c = useColors();
   const nav = scheme === "dark" ? DarkTheme : DefaultTheme;
   const fontsReady = useAppFonts();
   useEffect(() => {
@@ -38,7 +45,7 @@ export default function RootLayout() {
           <ThemeProvider value={{ ...nav, colors: { ...nav.colors, background: c.bg, card: c.bg, text: c.text, primary: c.text, border: c.border } }}>
             <ToastProvider>
               <Notifications>
-                <StatusBar style="auto" />
+                <StatusBar style={scheme === "dark" ? "light" : "dark"} />
                 <Stack screenOptions={{ headerShadowVisible: false, headerBackButtonDisplayMode: "minimal", contentStyle: { backgroundColor: c.bg } }}>
                   <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                   <Stack.Screen name="etf/[round]/[key]" options={{ headerShown: false }} />

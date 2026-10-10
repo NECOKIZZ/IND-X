@@ -1,11 +1,12 @@
-import { useColorScheme } from "react-native";
 import { dark, light, type Colors } from "./tokens";
+import { useAppearance } from "./scheme";
 
 export * from "./tokens";
 export { brand } from "./brand";
+export { AppearanceProvider, useAppearance, type Appearance } from "./scheme";
 
 export function useColors(): Colors {
-  return useColorScheme() === "dark" ? dark : light;
+  return useAppearance().scheme === "dark" ? dark : light;
 }
 
 /** Color for a return. */

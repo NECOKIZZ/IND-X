@@ -1,4 +1,4 @@
-// One ETF: return against the Index, chart, basket, team; back it or buy it.
+// One ETF: return against the median, chart, basket, team; back it or buy it.
 
 import { View } from "react-native";
 import { BlurView } from "expo-blur";

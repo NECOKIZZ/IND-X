@@ -1,4 +1,4 @@
-// ETFs ranked by return, with the Index drawn as a line between those
+// ETFs ranked by return, with the median drawn as a line between those
 // above it and those below.
 
 import { Fragment } from "react";
@@ -10,7 +10,7 @@ import { pct, short, usd } from "@/lib/format";
 import { LogoStack } from "./AssetLogo";
 import { Card, Num, Row, Text } from "./ui";
 
-export function IndexLine({ value, live }: { value: number | null; live: boolean }) {
+export function MedianLine({ value, live }: { value: number | null; live: boolean }) {
   const c = useColors();
   return (
     <Row style={{ marginVertical: space.md }} gap={space.sm}>
@@ -91,11 +91,11 @@ export function Standings({ round, mineKey }: { round: RoundView; mineKey?: stri
           Before the round starts, ETFs are ranked by their last 24 hours.
         </Text>
       ) : null}
-      {scored && lastAbove === -1 ? <IndexLine value={round.medianPct} live={live} /> : null}
+      {scored && lastAbove === -1 ? <MedianLine value={round.medianPct} live={live} /> : null}
       {etfs.map((e, i) => (
         <Fragment key={e.key}>
           <EtfRow etf={e} roundId={round.id} mine={e.key === mineKey} />
-          {i === lastAbove ? <IndexLine value={round.medianPct} live={live} /> : null}
+          {i === lastAbove ? <MedianLine value={round.medianPct} live={live} /> : null}
         </Fragment>
       ))}
     </View>
