@@ -1,61 +1,74 @@
-// ETFs ranked by return, with MEDIAN drawn as a line between those above
-// and those below.
+// ETFs ranked by return, with the Index drawn as a line between those
+// above it and those below.
 
 import { Fragment } from "react";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import type { EtfSummary, RoundView } from "@indx/core";
-import { radius, signColor, space, useColors } from "@/theme";
-import { pct, short } from "@/lib/format";
+import { brand, radius, signColor, space, useColors } from "@/theme";
+import { pct, short, usd } from "@/lib/format";
 import { LogoStack } from "./AssetLogo";
 import { Card, Num, Row, Text } from "./ui";
 
-export function MedianLine({ medianPct, live }: { medianPct: number | null; live: boolean }) {
+export function IndexLine({ value, live }: { value: number | null; live: boolean }) {
   const c = useColors();
   return (
-    <Row style={{ marginVertical: space.sm }}>
-      <View style={{ flex: 1, height: 0, borderTopWidth: 1.5, borderColor: c.median, borderStyle: "dashed" }} />
-      <View style={{ backgroundColor: c.median, borderRadius: radius.pill, paddingHorizontal: space.sm, paddingVertical: 2 }}>
-        <Text v="label" color="#000">
-          MEDIAN {medianPct !== null ? pct(medianPct) : ""}
-          {live ? " · live" : ""}
+    <Row style={{ marginVertical: space.md }} gap={space.sm}>
+      <View style={{ flex: 1, height: 0, borderTopWidth: 1, borderColor: c.line, borderStyle: "dashed", opacity: 0.5 }} />
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5, backgroundColor: c.scheme === "dark" ? c.secondary : c.text }}>
+        {live ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.brand }} /> : null}
+        <Text v="label" color={c.scheme === "dark" ? c.brand : c.bg}>
+          {brand.Line} {value !== null ? pct(value) : ""}
         </Text>
       </View>
-      <View style={{ flex: 1, height: 0, borderTopWidth: 1.5, borderColor: c.median, borderStyle: "dashed" }} />
+      <View style={{ flex: 1, height: 0, borderTopWidth: 1, borderColor: c.line, borderStyle: "dashed", opacity: 0.5 }} />
     </Row>
   );
 }
 
 export function EtfRow({ etf, roundId, mine }: { etf: EtfSummary; roundId: string; mine?: boolean }) {
   const c = useColors();
-  const tone = etf.standing === "above" ? c.up : etf.standing === "below" ? c.down : etf.standing === "draw" ? c.median : c.textMuted;
+  const tone = etf.standing === "above" ? c.up : etf.standing === "below" ? c.down : etf.standing === "draw" ? c.line : c.textFaint;
   return (
-    <Card onPress={() => router.push(`/etf/${roundId}/${etf.key}`)} style={{ marginBottom: space.sm, borderWidth: mine ? 1.5 : 0, borderColor: c.accent }}>
+    <Card onPress={() => router.push(`/etf/${roundId}/${etf.key}`)} style={{ marginBottom: space.sm, paddingVertical: space.md + 2, borderColor: mine ? c.text : c.border, borderWidth: mine ? 1 : StyleSheet.hairlineWidth }}>
       <Row gap={space.md}>
-        <View style={{ width: 4, alignSelf: "stretch", borderRadius: 2, backgroundColor: tone }} />
-        <View style={{ flex: 1, gap: 4 }}>
+        <Num v="small" color={c.textFaint} style={{ width: 18 }}>
+          {etf.rank ?? "–"}
+        </Num>
+        <View style={{ flex: 1, gap: 6 }}>
           <Row style={{ justifyContent: "space-between" }}>
-            <Text v="bodyStrong" numberOfLines={1} style={{ flex: 1 }}>
-              {etf.rank ? `${etf.rank}. ` : ""}
-              {etf.name}
-            </Text>
-            <Num color={signColor(c, etf.retPct)}>{pct(etf.retPct)}</Num>
+            <Row style={{ flex: 1 }} gap={6}>
+              <Text v="bodyStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
+                {etf.name}
+              </Text>
+              {mine ? (
+                <Text v="label" color={c.up}>
+                  you
+                </Text>
+              ) : null}
+            </Row>
+            <Num v="bodyStrong" color={signColor(c, etf.retPct)}>
+              {pct(etf.retPct)}
+            </Num>
           </Row>
           <Row style={{ justifyContent: "space-between" }}>
             <Row>
-              <LogoStack legs={etf.legs} size={20} />
+              <LogoStack legs={etf.legs} size={18} />
               <Text v="small" color={c.textMuted}>
-                {etf.tickets} {etf.tickets === 1 ? "ticket" : "tickets"} · {short(etf.captain)}
+                {etf.tickets} · {short(etf.captain)}
               </Text>
             </Row>
             {etf.refunded ? (
-              <Text v="small" color={c.textMuted}>
+              <Text v="small" color={c.textFaint}>
                 refunded
               </Text>
             ) : etf.ticketPayoutUsd !== null ? (
-              <Text v="small" color={c.textMuted}>
-                ticket → ${etf.ticketPayoutUsd.toFixed(2)}
-              </Text>
+              <Row gap={5}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: tone }} />
+                <Text v="small" color={c.textMuted}>
+                  $5 → {usd(etf.ticketPayoutUsd)}
+                </Text>
+              </Row>
             ) : null}
           </Row>
         </View>
@@ -68,21 +81,21 @@ export function Standings({ round, mineKey }: { round: RoundView; mineKey?: stri
   const c = useColors();
   const etfs = round.etfs;
   if (!etfs.length) return null;
-  // MEDIAN goes after the last ETF above it (draws sit on the line).
   const scored = round.medianPct !== null;
   const lastAbove = scored ? etfs.reduce((i, e, j) => (e.standing === "above" ? j : i), -1) : -2;
+  const live = round.pricing !== "final";
   return (
     <View>
       {round.pricing === "preview" ? (
-        <Text v="small" color={c.textMuted} style={{ marginBottom: space.sm }}>
-          Before the round starts: ranked by each basket’s last 24 hours.
+        <Text v="small" color={c.textMuted} style={{ marginBottom: space.md }}>
+          Before the round starts, ETFs are ranked by their last 24 hours.
         </Text>
       ) : null}
-      {scored && lastAbove === -1 ? <MedianLine medianPct={round.medianPct} live={round.pricing !== "final"} /> : null}
+      {scored && lastAbove === -1 ? <IndexLine value={round.medianPct} live={live} /> : null}
       {etfs.map((e, i) => (
         <Fragment key={e.key}>
           <EtfRow etf={e} roundId={round.id} mine={e.key === mineKey} />
-          {i === lastAbove ? <MedianLine medianPct={round.medianPct} live={round.pricing !== "final"} /> : null}
+          {i === lastAbove ? <IndexLine value={round.medianPct} live={live} /> : null}
         </Fragment>
       ))}
     </View>

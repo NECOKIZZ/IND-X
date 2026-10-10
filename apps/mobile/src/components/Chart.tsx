@@ -1,10 +1,10 @@
-// Return chart: the ETF against the S&P 500 and MEDIAN's current level.
+// Return chart: the ETF against the S&P 500 and the Index's current level.
 
 import { useState } from "react";
 import { View, type LayoutChangeEvent } from "react-native";
 import Svg, { Line, Path } from "react-native-svg";
 import type { ChartPoint } from "@indx/core";
-import { space, useColors } from "@/theme";
+import { brand, space, useColors } from "@/theme";
 import { pct } from "@/lib/format";
 import { Row, Text } from "./ui";
 
@@ -13,8 +13,8 @@ export function ReturnChart({ points, medianPct, height = 180 }: { points: Chart
   const [w, setW] = useState(0);
   if (points.length < 2) {
     return (
-      <View style={{ height, alignItems: "center", justifyContent: "center" }}>
-        <Text color={c.textMuted}>The chart starts when entries close.</Text>
+      <View style={{ height: 56, alignItems: "flex-start", justifyContent: "center" }}>
+        <Text v="small" color={c.textMuted}>The chart starts when entries close.</Text>
       </View>
     );
   }
@@ -39,15 +39,15 @@ export function ReturnChart({ points, medianPct, height = 180 }: { points: Chart
         {w > 0 ? (
           <Svg width={w} height={height}>
             <Line x1={0} x2={w} y1={y(0)} y2={y(0)} stroke={c.border} strokeWidth={1} />
-            {medianPct !== null ? <Line x1={0} x2={w} y1={y(medianPct)} y2={y(medianPct)} stroke={c.median} strokeWidth={1.5} strokeDasharray="5 4" /> : null}
+            {medianPct !== null ? <Line x1={0} x2={w} y1={y(medianPct)} y2={y(medianPct)} stroke={c.line} strokeWidth={1} strokeDasharray="4 4" opacity={0.6} /> : null}
             <Path d={path((p) => p.benchPct)} stroke={c.textMuted} strokeWidth={1.5} fill="none" opacity={0.6} />
-            <Path d={path((p) => p.retPct)} stroke={lineColor} strokeWidth={2.5} fill="none" strokeLinejoin="round" strokeLinecap="round" />
+            <Path d={path((p) => p.retPct)} stroke={lineColor} strokeWidth={2} fill="none" strokeLinejoin="round" strokeLinecap="round" />
           </Svg>
         ) : null}
       </View>
       <Row gap={space.lg} style={{ marginTop: space.sm }}>
         <Legend color={lineColor} label={`This ETF ${pct(last)}`} />
-        {medianPct !== null ? <Legend color={c.median} label={`MEDIAN ${pct(medianPct)}`} dashed /> : null}
+        {medianPct !== null ? <Legend color={c.line} label={`${brand.Line} ${pct(medianPct)}`} dashed /> : null}
         <Legend color={c.textMuted} label="S&P 500" />
       </Row>
     </View>

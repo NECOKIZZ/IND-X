@@ -1,9 +1,11 @@
-// PLACEHOLDER BRAND: the app's name and copy that will change with branding.
-// "MEDIAN" (the ghost team) is part of the game, not the brand.
+// Ind-X brand copy. The round's middle line is "the Index": ETFs above it
+// win, on it draw, below it lose. Rename it here if that changes.
 
 export const brand = {
-  name: "IND-X",
-  tagline: "Build a stock ETF. Beat MEDIAN.",
-  /** Shown on the connect screen and empty states. */
-  pitch: "Lock a basket of tokenized stocks with a $5 ticket. Every week, ETFs above MEDIAN win the tickets below it.",
+  name: "Ind-X",
+  tagline: "Build a stock ETF. Beat the Index.",
+  pitch: "Lock a basket of tokenized stocks with a $5 ticket. Every week, the ETFs above the Index win the tickets below it.",
+  /** The ghost team at the round's median return. */
+  line: "the Index",
+  Line: "The Index",
 };

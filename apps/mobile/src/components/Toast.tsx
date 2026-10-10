@@ -31,8 +31,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       {toast ? (
         <Animated.View pointerEvents="none" style={{ position: "absolute", left: space.lg, right: space.lg, top: insets.top + space.sm, opacity }}>
-          <View style={{ backgroundColor: toast.kind === "error" ? c.down : toast.kind === "ok" ? c.up : c.text, borderRadius: radius.md, padding: space.md }}>
-            <Text v="smallStrong" color={toast.kind === "info" ? c.bg : "#fff"}>
+          <View style={{ alignSelf: "center", flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: c.scheme === "dark" ? c.surface : c.text, borderRadius: radius.pill, paddingVertical: 10, paddingHorizontal: 16, boxShadow: `0 8px 24px ${c.shadow}` }}>
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: toast.kind === "error" ? c.down : toast.kind === "ok" ? c.brand : c.textFaint }} />
+            <Text v="smallStrong" color={c.scheme === "dark" ? c.text : c.bg}>
               {toast.msg}
             </Text>
           </View>

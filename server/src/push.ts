@@ -2,7 +2,7 @@
 // Expo push token per wallet (POST /v1/push); the keeper's events fan out:
 //   opened         → everyone: a new round is open
 //   entries-closed → the round's players: it's live
-//   settled        → each player: beat MEDIAN / draw / below, and the payout
+//   settled        → each player: beat the Index / draw / below, and the payout
 // Each notification is sent once (dedupe key in the store).
 
 import { formatUsd, type Settlement } from "@indx/core";
@@ -53,9 +53,9 @@ export function resultMessage(s: Settlement, wallet: string, stakeDecimals = 6):
   if (s.void) return { title: "Round voided", body: `Your ticket (${usd}) is on its way back.` };
   if (e.status.kind === "refunded") return { title: "Ticket refunded", body: `Your entry didn't qualify this round, so your ${usd} is coming back.` };
   const team = s.teams.find((t) => t.teamKey === e.status.team);
-  if (team?.isWinner) return { title: "You beat MEDIAN 🎉", body: `${usd} is on its way to your wallet.` };
-  if (team?.isDraw) return { title: "Dead on MEDIAN", body: `A draw: your ticket (${usd}) comes back.` };
-  return { title: "Below MEDIAN this week", body: "Your basket is on its way back. New round, new chance." };
+  if (team?.isWinner) return { title: "You beat the Index", body: `${usd} is on its way to your wallet.` };
+  if (team?.isDraw) return { title: "Right on the Index", body: `A draw: your ticket (${usd}) comes back.` };
+  return { title: "Below the Index this week", body: "Your basket is on its way back. New round, new chance." };
 }
 
 export function notifier(L: League) {
@@ -73,12 +73,12 @@ async function handle(L: League, e: KeeperEvent) {
   if (e.kind === "opened") {
     if (!(await st.firstTime(`opened/${e.roundId}`))) return;
     const all = await st.pushTokens();
-    await sender(all.map(({ token }) => ({ to: token, title: `Round ${e.roundId} is open`, body: `Build an ETF that beats MEDIAN. Entries close ${fmtTime(e.entryClose)}.`, data: { url: `/round/${e.roundId}` }, sound: "default" })));
+    await sender(all.map(({ token }) => ({ to: token, title: `Round ${e.roundId} is open`, body: `Build an ETF that beats the Index. Entries close ${fmtTime(e.entryClose)}.`, data: { url: `/round/${e.roundId}` }, sound: "default" })));
   } else if (e.kind === "entries-closed") {
     const entries = await L.reader.entries(e.roundId);
     const wallets = new Set(entries.map((x) => x.wallet.toBase58()));
     const tokens = (await st.pushTokens()).filter((t) => wallets.has(t.wallet));
-    await sender(tokens.map(({ token }) => ({ to: token, title: `Round ${e.roundId} is live`, body: "Entries are closed. Follow your ETF against MEDIAN.", data: { url: `/round/${e.roundId}` } })));
+    await sender(tokens.map(({ token }) => ({ to: token, title: `Round ${e.roundId} is live`, body: "Entries are closed. Follow your ETF against the Index.", data: { url: `/round/${e.roundId}` } })));
   } else if (e.kind === "settled") {
     const msgs: PushMessage[] = [];
     for (const { wallet, token } of await st.pushTokens()) {
