@@ -1,5 +1,5 @@
 // League: this week's round. A glowing hero (phase, countdown, pot, the
-// Index), your entry, live standings around the Index, and activity.
+// median), your entry, live standings around the median, and activity.
 
 import { Pressable, View } from "react-native";
 import { router } from "expo-router";

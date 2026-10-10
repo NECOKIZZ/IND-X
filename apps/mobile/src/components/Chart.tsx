@@ -1,4 +1,4 @@
-// Return chart: the ETF against the S&P 500 and the Index's current level.
+// Return chart: the ETF against the S&P 500 and the median's current level.
 
 import { useState } from "react";
 import { View, type LayoutChangeEvent } from "react-native";

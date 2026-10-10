@@ -5,7 +5,7 @@ import { View } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { router } from "expo-router";
 import type { WalletEntryView } from "@indx/core";
-import { brand, radius, signColor, space, useColors } from "@/theme";
+import { brand, radius, signColor, space, useAppearance, useColors, type Appearance } from "@/theme";
 import { useAssets, useConfig, useWalletView } from "@/lib/queries";
 import { api } from "@/lib/api";
 import { pct, short, usd } from "@/lib/format";
@@ -17,7 +17,7 @@ import { PageTitle, TopBar } from "@/components/Header";
 import { Icon } from "@/components/Icon";
 import { useToast } from "@/components/Toast";
 import { useTxAction } from "@/components/TxAction";
-import { Button, Card, Divider, Empty, ErrorView, Label, Num, Pill, Row, Screen, SectionTitle, Skeleton, Stat, Text } from "@/components/ui";
+import { Button, Card, Divider, Empty, ErrorView, Label, Num, Pill, Row, Screen, SectionTitle, Segmented, Skeleton, Stat, Text } from "@/components/ui";
 
 const STATE: Record<WalletEntryView["state"], string> = {
   entered: "Entered",
@@ -85,6 +85,7 @@ export default function Portfolio() {
         <TopBar />
         <PageTitle title="Portfolio" />
         <Empty title="Connect a wallet" body={brand.pitch} action={<Button title="Connect" onPress={() => router.push("/connect")} />} />
+        <AppearancePicker />
       </Screen>
     );
   }
@@ -209,6 +210,8 @@ export default function Portfolio() {
         </>
       ) : null}
 
+      <AppearancePicker />
+
       <Row gap={6} style={{ marginTop: space.xxl, justifyContent: "center" }}>
         <Icon name="info" size={14} color={c.textFaint} />
         <Text v="small" color={c.textFaint}>
@@ -216,5 +219,23 @@ export default function Portfolio() {
         </Text>
       </Row>
     </Screen>
+  );
+}
+
+function AppearancePicker() {
+  const { appearance, setAppearance } = useAppearance();
+  return (
+    <>
+      <SectionTitle title="Appearance" />
+      <Segmented<Appearance>
+        value={appearance}
+        onChange={setAppearance}
+        options={[
+          { value: "dark", label: "Dark" },
+          { value: "light", label: "Light" },
+          { value: "system", label: "System" },
+        ]}
+      />
+    </>
   );
 }
