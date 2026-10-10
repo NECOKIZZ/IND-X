@@ -1,76 +1,83 @@
-// League: this week's round. Hero (phase, countdown, pot, MEDIAN), live
-// standings around MEDIAN, and what people are doing.
+// League: this week's round. A glowing hero (phase, countdown, pot, the
+// Index), your entry, live standings around the Index, and activity.
 
-import { View } from "react-native";
-import { Link, router } from "expo-router";
+import { Pressable, View } from "react-native";
+import { router } from "expo-router";
 import type { RoundView } from "@indx/core";
-import { brand, signColor, space, useColors } from "@/theme";
+import { brand, radius, signColor, space, useColors } from "@/theme";
 import { useActivity, useRound, useWalletView } from "@/lib/queries";
 import { pct, short, usd, when } from "@/lib/format";
 import { useWallet } from "@/wallet/WalletProvider";
-import { Button, Card, Empty, ErrorView, Num, Pill, Row, Screen, SectionTitle, Skeleton, Stat, Text } from "@/components/ui";
+import { Button, Card, Divider, Empty, ErrorView, Label, Num, Row, Screen, SectionTitle, Skeleton, Stat, Text } from "@/components/ui";
 import { Countdown } from "@/components/Countdown";
+import { Glow } from "@/components/Glow";
+import { TopBar } from "@/components/Header";
+import { Icon } from "@/components/Icon";
 import { Standings } from "@/components/Standings";
 
-const PHASE_LABEL: Record<RoundView["phase"], string> = {
-  open: "Entries open",
-  live: "Live",
-  settling: "Settling",
-  settled: "Settled",
-  voided: "Voided",
-};
+const PHASE: Record<RoundView["phase"], string> = { open: "Entries open", live: "Live", settling: "Settling", settled: "Settled", voided: "Voided" };
 
 function Hero({ r }: { r: RoundView }) {
   const c = useColors();
+  const settling = (r.phase === "live" && r.serverTime >= r.end) || r.phase === "settling";
   const target = r.phase === "open" ? r.entryClose : r.end;
   return (
-    <Card style={{ gap: space.lg }}>
-      <Row style={{ justifyContent: "space-between" }}>
-        <Pill label={`Round ${r.id} · ${PHASE_LABEL[r.phase]}`} bg={r.phase === "live" ? c.up : r.phase === "open" ? c.accent : c.surfaceAlt} color={r.phase === "live" || r.phase === "open" ? "#fff" : c.text} />
-        <Link href="/rules">
-          <Text v="smallStrong" color={c.accent}>
-            How it works
-          </Text>
-        </Link>
-      </Row>
-      {(r.phase === "live" && r.serverTime >= r.end) || r.phase === "settling" ? (
-        <View>
-          <Text v="label" color={c.textMuted}>
-            The round is over
-          </Text>
-          <Text v="title">Settling results…</Text>
-          <Text v="small" color={c.textMuted}>
-            Closing prices are in. Payouts arrive in your wallet automatically.
-          </Text>
+    <View style={{ borderRadius: radius.xl, overflow: "hidden", backgroundColor: c.surface, borderCurve: "continuous", borderWidth: 1, borderColor: c.border }}>
+      <Glow />
+      <View style={{ padding: space.xl, gap: space.xl }}>
+        <Row style={{ justifyContent: "space-between" }}>
+          <Row gap={8}>
+            {r.phase === "open" || r.phase === "live" ? <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: c.up }} /> : null}
+            <Label color={c.text}>
+              Round {r.id} · {PHASE[r.phase]}
+            </Label>
+          </Row>
+          <Pressable onPress={() => router.push("/rules")} hitSlop={10}>
+            <Row gap={4}>
+              <Text v="smallStrong">How it works</Text>
+              <Icon name="arrow" size={13} color={c.text} strokeWidth={2} />
+            </Row>
+          </Pressable>
+        </Row>
+
+        <View style={{ gap: 4 }}>
+          {settling ? (
+            <>
+              <Label>The round is over</Label>
+              <Text v="hero">Settling results</Text>
+              <Text v="small" color={c.textMuted}>
+                Closing prices are in. Payouts arrive in wallets automatically.
+              </Text>
+            </>
+          ) : r.phase === "open" || r.phase === "live" ? (
+            <>
+              <Label>{r.phase === "open" ? "Entries close in" : "Round ends in"}</Label>
+              <Countdown to={target} serverTime={r.serverTime} v="display" />
+              <Text v="small" color={c.textMuted}>
+                {when(target)}
+              </Text>
+            </>
+          ) : (
+            <>
+              <Label>{brand.Line} finished at</Label>
+              <Num v="display">{pct(r.medianPct)}</Num>
+              {r.voidReason ? (
+                <Text v="small" color={c.textMuted}>
+                  Void ({r.voidReason}): every ticket came back.
+                </Text>
+              ) : null}
+            </>
+          )}
         </View>
-      ) : r.phase === "open" || r.phase === "live" ? (
-        <View>
-          <Text v="label" color={c.textMuted}>
-            {r.phase === "open" ? "Entries close in" : "Round ends in"}
-          </Text>
-          <Countdown to={target} serverTime={r.serverTime} v="hero" />
-          <Text v="small" color={c.textMuted}>
-            {when(target)}
-          </Text>
-        </View>
-      ) : (
-        <View>
-          <Text v="label" color={c.textMuted}>
-            MEDIAN finished at
-          </Text>
-          <Num v="hero" color={c.median}>
-            {pct(r.medianPct)}
-          </Num>
-          {r.voidReason ? <Text color={c.textMuted}>Void ({r.voidReason}): every ticket came back.</Text> : null}
-        </View>
-      )}
-      <Row style={{ justifyContent: "space-between" }}>
-        <Stat label="Pot" value={usd(r.potUsd, 0)} />
-        <Stat label="Players" value={String(r.players)} align="center" />
-        <Stat label="ETFs" value={String(r.etfCount)} align="center" />
-        <Stat label="MEDIAN" value={pct(r.medianPct)} color={r.medianPct === null ? undefined : c.median} align="right" />
-      </Row>
-    </Card>
+
+        <Row style={{ justifyContent: "space-between" }}>
+          <Stat label="Pot" value={usd(r.potUsd, 0)} />
+          <Stat label="Players" value={String(r.players)} />
+          <Stat label="ETFs" value={String(r.etfCount)} />
+          <Stat label={brand.Line} value={pct(r.medianPct)} align="right" />
+        </Row>
+      </View>
+    </View>
   );
 }
 
@@ -81,10 +88,15 @@ function YourEntry({ r }: { r: RoundView }) {
   const e = w.data?.entries.find((x) => x.roundId === r.id);
   if (!address) {
     return (
-      <Card style={{ gap: space.md, marginTop: space.md }}>
-        <Text v="bodyStrong">{brand.tagline}</Text>
+      <Card style={{ marginTop: space.md, gap: space.md }}>
+        <Text v="title" style={{ fontSize: 26, lineHeight: 30 }}>
+          {brand.tagline}
+        </Text>
         <Text color={c.textMuted}>{brand.pitch}</Text>
-        <Button title="Connect a wallet" onPress={() => router.push("/connect")} />
+        <Row>
+          <Button title="Get started" onPress={() => router.push("/connect")} />
+          <Button title="Learn more" kind="ghost" icon="arrow" onPress={() => router.push("/rules")} />
+        </Row>
       </Card>
     );
   }
@@ -93,27 +105,33 @@ function YourEntry({ r }: { r: RoundView }) {
     return (
       <Row style={{ marginTop: space.md }}>
         <Button title="Build an ETF" style={{ flex: 1 }} onPress={() => router.push("/create")} />
-        <Button title="Back one" kind="secondary" style={{ flex: 1 }} onPress={() => r.etfs[0] && router.push(`/etf/${r.id}/${r.etfs[0].key}`)} disabled={!r.etfs.length} />
+        <Button title="Back one" kind="secondary" style={{ flex: 1 }} disabled={!r.etfs.length} onPress={() => r.etfs[0] && router.push(`/etf/${r.id}/${r.etfs[0].key}`)} />
       </Row>
     );
   }
-  const tone = e.standing === "above" ? c.up : e.standing === "below" ? c.down : c.median;
+  const tone = e.standing === "above" ? c.up : e.standing === "below" ? c.down : c.line;
   return (
-    <Card onPress={() => router.push(`/etf/${r.id}/${e.etfKey}`)} style={{ marginTop: space.md, gap: 6 }}>
-      <Text v="label" color={c.textMuted}>
-        You’re in · {e.isCaptain ? "creator" : e.isCreator ? "co-creator" : "backer"}
-      </Text>
+    <Card onPress={() => router.push(`/etf/${r.id}/${e.etfKey}`)} style={{ marginTop: space.md, gap: space.sm }}>
       <Row style={{ justifyContent: "space-between" }}>
-        <Text v="heading">{e.etfName}</Text>
-        <Num v="heading" color={signColor(c, e.retPct)}>
+        <Label>You’re in · {e.isCaptain ? "creator" : e.isCreator ? "co-creator" : "backer"}</Label>
+        <Icon name="arrow" size={14} color={c.textMuted} />
+      </Row>
+      <Row style={{ justifyContent: "space-between", alignItems: "flex-end" }}>
+        <Text v="title" style={{ flex: 1 }} numberOfLines={1}>
+          {e.etfName}
+        </Text>
+        <Num v="title" color={signColor(c, e.retPct)}>
           {pct(e.retPct)}
         </Num>
       </Row>
       {e.standing ? (
-        <Text color={tone}>
-          {e.standing === "above" ? "Above MEDIAN" : e.standing === "below" ? "Below MEDIAN" : "On MEDIAN"}
-          {e.payoutUsd !== null ? ` · ${r.phase === "settled" ? "paid" : "would pay"} ${usd(e.payoutUsd)}` : ""}
-        </Text>
+        <Row gap={6}>
+          <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: tone }} />
+          <Text v="small" color={c.textMuted}>
+            {e.standing === "above" ? `Above ${brand.line}` : e.standing === "below" ? `Below ${brand.line}` : `On ${brand.line}`}
+            {e.payoutUsd !== null ? ` · ${r.phase === "settled" ? "paid" : "would pay"} ${usd(e.payoutUsd)}` : ""}
+          </Text>
+        </Row>
       ) : null}
     </Card>
   );
@@ -129,9 +147,10 @@ export default function League() {
   if (round.isLoading) {
     return (
       <Screen>
-        <Skeleton height={220} />
-        <Skeleton height={72} style={{ marginTop: space.md }} />
-        <Skeleton height={72} style={{ marginTop: space.sm }} />
+        <TopBar />
+        <Skeleton height={300} style={{ borderRadius: radius.xl }} />
+        <Skeleton height={84} style={{ marginTop: space.md }} />
+        <Skeleton height={84} style={{ marginTop: space.sm }} />
       </Screen>
     );
   }
@@ -139,6 +158,7 @@ export default function League() {
   const r = round.data!;
   return (
     <Screen onRefresh={() => Promise.all([round.refetch(), activity.refetch()])}>
+      <TopBar />
       <Hero r={r} />
       <YourEntry r={r} />
       <SectionTitle title={r.phase === "settled" ? "Final standings" : "Standings"} />
@@ -146,16 +166,24 @@ export default function League() {
       {activity.data?.length ? (
         <>
           <SectionTitle title="Activity" />
-          <Card style={{ gap: space.md }}>
-            {activity.data.slice(0, 8).map((a) => (
-              <Row key={a.index} style={{ justifyContent: "space-between" }}>
-                <Text v="small" style={{ flex: 1 }} numberOfLines={1}>
-                  <Text v="smallStrong">{short(a.wallet)}</Text> {a.kind === "created" ? "built" : a.kind === "cloned" ? "copied" : "backed"} {a.etfName}
-                </Text>
-                <Text v="small" color={c.textMuted}>
-                  #{a.index + 1}
-                </Text>
-              </Row>
+          <Card style={{ paddingVertical: space.sm }}>
+            {activity.data.slice(0, 8).map((a, i) => (
+              <View key={a.index}>
+                {i ? <Divider /> : null}
+                <Row style={{ justifyContent: "space-between", paddingVertical: space.md }}>
+                  <Text v="small" style={{ flex: 1 }} numberOfLines={1}>
+                    <Text v="smallStrong">{short(a.wallet)}</Text>
+                    <Text v="small" color={c.textMuted}>
+                      {" "}
+                      {a.kind === "created" ? "built" : a.kind === "cloned" ? "copied" : "backed"}{" "}
+                    </Text>
+                    {a.etfName}
+                  </Text>
+                  <Text v="mono" color={c.textFaint}>
+                    #{a.index + 1}
+                  </Text>
+                </Row>
+              </View>
             ))}
           </Card>
         </>

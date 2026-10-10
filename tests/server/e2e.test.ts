@@ -189,7 +189,7 @@ describe("backend end to end", () => {
     expect(ww.entries[0].state).toBe("won");
     expect(ww.entries[0].payoutUsd!).toBeGreaterThan(5);
     expect(ww.stats.wins).toBe(1);
-    expect(pushed.some((m) => m.title.startsWith("You beat MEDIAN"))).toBe(true);
+    expect(pushed.some((m) => m.title.startsWith("You beat the Index"))).toBe(true);
 
     const lb = await api<{ wallet: string; netUsd: number }[]>("/v1/leaderboard");
     expect(lb[0].netUsd).toBeGreaterThan(0);

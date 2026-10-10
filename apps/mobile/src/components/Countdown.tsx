@@ -3,7 +3,7 @@ import { countdown } from "@/lib/format";
 import { Num } from "./ui";
 
 /** Live countdown to a unix time, corrected by the server's clock. */
-export function Countdown({ to, serverTime, v = "heading", color }: { to: number; serverTime?: number; v?: "heading" | "title" | "hero" | "bodyStrong"; color?: string }) {
+export function Countdown({ to, serverTime, v = "heading", color }: { to: number; serverTime?: number; v?: "heading" | "title" | "hero" | "display" | "bodyStrong"; color?: string }) {
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
     // The server's clock, carried forward by this device's.
