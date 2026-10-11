@@ -3,7 +3,7 @@
 Expo SDK 57 · Expo Router (native tabs) · TanStack Query · react-native-svg.
 
 ```bash
-cp .env.example .env            # EXPO_PUBLIC_API_URL: the league API
+[ -f .env ] || cp .env.example .env   # never overwrites an existing .env; set EXPO_PUBLIC_API_URL
 npx expo start                  # Expo Go: Phantom or the test wallet
 npx expo run:android            # development build: + Mobile Wallet Adapter, push
 ```

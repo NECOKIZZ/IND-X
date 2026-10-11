@@ -2,7 +2,7 @@
 // Expo push token per wallet (POST /v1/push); the keeper's events fan out:
 //   opened         → everyone: a new round is open
 //   entries-closed → the round's players: it's live
-//   settled        → each player: beat the median / draw / below, and the payout
+//   settled        → each player: beat the median or not, and the payout
 // Each notification is sent once (dedupe key in the store).
 
 import { formatUsd, type Settlement } from "@indx/core";
@@ -54,7 +54,6 @@ export function resultMessage(s: Settlement, wallet: string, stakeDecimals = 6):
   if (e.status.kind === "refunded") return { title: "Ticket refunded", body: `Your entry didn't qualify this round, so your ${usd} is coming back.` };
   const team = s.teams.find((t) => t.teamKey === e.status.team);
   if (team?.isWinner) return { title: "You beat the median", body: `${usd} is on its way to your wallet.` };
-  if (team?.isDraw) return { title: "Right on the median", body: `A draw: your ticket (${usd}) comes back.` };
   return { title: "Below the median this week", body: "Your basket is on its way back. New round, new chance." };
 }
 

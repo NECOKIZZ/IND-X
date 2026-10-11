@@ -11,10 +11,13 @@
 //   GET  /v1/rounds/:id/verify            recompute the payouts from the inputs
 //   GET  /v1/wallets/:wallet              balances, entries, results
 //   GET  /v1/leaderboard                  best players across rounds
+//   POST /v1/basket/quote                 what a create would lock (same function the tx uses)
 //   POST /v1/tx/create | back | claim | boost | buy   → TxPlan (unsigned transactions)
 //   POST /v1/tx/send     { tx }           relay a signed transaction
 //   POST /v1/faucet      { wallet }       test clusters only
 //   POST /v1/push        { wallet, token }   register for notifications (DELETE to remove)
+//   POST /v1/keeper/tick                  run one keeper step (Authorization: Bearer KEEPER_TICK_SECRET);
+//                                         for hosts that sleep: a cron pings it every few minutes
 
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
@@ -23,11 +26,17 @@ import type { League } from "../league.js";
 import { publicRpcUrl } from "../config.js";
 import { PRICE_SOURCE_LABEL, priceSourceFromEnv } from "../prices.js";
 import { activity, assetViews, currentRoundId, etfView, HttpError, leaderboard, roundSummaries, roundView, walletView } from "./views.js";
-import { faucet, planBack, planBoost, planBuy, planClaim, planCreate, relay } from "./tx.js";
+import { faucet, planBack, planBoost, planBuy, planClaim, planCreate, quoteBasket, relay } from "./tx.js";
+import { Keeper, keeperOptionsFromEnv } from "../keeper/keeper.js";
+import { notifier } from "../push.js";
+import { invalidateRound } from "./views.js";
 
 const replacer = (_: string, v: unknown) => (typeof v === "bigint" ? v.toString() : v);
 const json = (c: Context, body: unknown, status = 200) =>
   c.body(JSON.stringify(body, replacer), status as 200, { "content-type": "application/json; charset=utf-8" });
+
+/** The deployed build: the host's git commit when it sets one, else "dev". */
+export const serverVersion = () => (process.env.RENDER_GIT_COMMIT ?? process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.GIT_SHA ?? "dev").slice(0, 7);
 
 const explorer = (cluster: string) => (cluster === "mainnet" ? "https://solscan.io" : cluster === "devnet" ? "https://solscan.io/?cluster=devnet" : "");
 
@@ -47,6 +56,7 @@ export function createApp(L: League) {
   app.get("/v1/config", (c) => {
     const p = DEFAULT_LEAGUE_PARAMS;
     const body: ConfigView = {
+      version: serverVersion(),
       cluster: L.cluster,
       programId: L.deployment.programId,
       stakeMint: L.deployment.stakeMint,
@@ -104,6 +114,10 @@ export function createApp(L: League) {
       throw new HttpError(400, "JSON body required");
     }
   };
+  app.post("/v1/basket/quote", async (c) => {
+    const b = await body<{ wallet?: string; legs: { mint: string; weightBps: number }[]; usd?: number }>(c);
+    return json(c, await quoteBasket(L, b.wallet, b.legs, b.usd));
+  });
   app.post("/v1/tx/create", async (c) => json(c, await planCreate(L, await body(c))));
   app.post("/v1/tx/back", async (c) => json(c, await planBack(L, await body(c))));
   app.post("/v1/tx/claim", async (c) => {
@@ -131,6 +145,26 @@ export function createApp(L: League) {
     const b = await body<{ wallet: string; token: string }>(c);
     await L.store.removePushToken(b.wallet, b.token);
     return json(c, { ok: true });
+  });
+
+  // One keeper step per call, for hosts without an always-on process (a free
+  // Render instance + a cron pinger). Ticks never overlap.
+  let keeper: Keeper | null = null;
+  let ticking: Promise<string[]> | null = null;
+  app.post("/v1/keeper/tick", async (c) => {
+    const secret = process.env.KEEPER_TICK_SECRET;
+    if (!secret || !L.keeper) throw new HttpError(404, "keeper ticks are not enabled here");
+    if (c.req.header("authorization") !== `Bearer ${secret}`) throw new HttpError(401, "bad keeper secret");
+    if (!keeper) {
+      keeper = new Keeper(L, keeperOptionsFromEnv());
+      keeper.onEvent = notifier(L);
+    }
+    if (ticking) return json(c, { ok: true, did: ["a tick is already running"] });
+    ticking = keeper.tick().finally(() => {
+      ticking = null;
+      invalidateRound();
+    });
+    return json(c, { ok: true, did: await ticking });
   });
 
   return app;

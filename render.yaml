@@ -1,0 +1,32 @@
+# Render blueprint: the API (with the keeper behind /v1/keeper/tick).
+# Works on the free plan: a cron pinger (.github/workflows/keeper-tick.yml or
+# cron-job.org) calls /v1/keeper/tick every 5 minutes, which also keeps the
+# free instance awake. On a paid plan you can set LEAGUE_RUN_KEEPER=1 instead
+# and drop the pinger.
+services:
+  - type: web
+    name: ind-x-api
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && pnpm install --frozen-lockfile
+    startCommand: pnpm server
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: LEAGUE_CLUSTER
+        value: devnet
+      - key: LEAGUE_SCHEDULE
+        value: weekly
+      - key: LEAGUE_RUN_KEEPER
+        value: "0"
+      - key: RPC_URL
+        sync: false # your Helius devnet URL
+      - key: DATABASE_URL
+        sync: false # Supabase / Neon Postgres connection string
+      - key: KEEPER_KEYPAIR
+        sync: false # JSON array of the keeper's secret key
+      - key: FAUCET_KEYPAIR
+        sync: false # JSON array of the admin key (mint authority of the test tokens)
+      - key: KEEPER_TICK_SECRET
+        generateValue: true # the cron pinger sends this as a Bearer token

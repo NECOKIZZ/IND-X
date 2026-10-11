@@ -45,7 +45,7 @@ export interface Colors {
   /** Losses / below the line. */
   down: string;
   downSoft: string;
-  /** The round's line (the median) and draws. */
+  /** The round's line (the median). */
   line: string;
   /** Glass (floating nav, sheets). */
   glass: string;

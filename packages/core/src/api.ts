@@ -7,6 +7,8 @@ import type { AssetKind } from "./assets.js";
 export type Cluster = "mainnet" | "devnet" | "localnet" | "lite";
 
 export interface ConfigView {
+  /** Build of the server (git commit): check it before testing a fresh deploy. */
+  version: string;
   cluster: Cluster;
   programId: string;
   stakeMint: string;
@@ -56,7 +58,8 @@ export interface AssetView {
 }
 
 export type RoundPhase = "open" | "live" | "settling" | "settled" | "voided";
-export type Standing = "above" | "draw" | "below";
+/** Strictly above the median wins; on it or below loses (no draws). */
+export type Standing = "above" | "below";
 
 export interface LegView {
   symbol: string;
@@ -74,9 +77,9 @@ export interface EtfSummary {
   key: string;
   name: string;
   captain: string;
-  /** Clones + backers (captain excluded). */
+  /** Clones + backers, NOT counting the captain. */
   members: number;
-  /** Tickets on the team (members + captain). */
+  /** Every ticket on the team: members + the captain. Don't add the captain again. */
   tickets: number;
   buyFeeBps: number;
   legs: LegView[];
@@ -89,6 +92,8 @@ export interface EtfSummary {
   ticketPayoutUsd: number | null;
   /** The keeper refunds this team (ineligible basket etc.), once known. */
   refunded: boolean;
+  /** Return over the round so far (for sparklines); empty before the round starts. */
+  spark: number[];
 }
 
 export interface RoundView {
@@ -111,12 +116,16 @@ export interface RoundView {
   voidReason: string | null;
   inputsHash: string | null;
   serverTime: number;
+  /** The median's return over the round so far; empty before it starts. */
+  medianSeries: { t: number; pct: number }[];
 }
 
 export interface ChartPoint {
   t: number; // unix ms
   retPct: number;
   benchPct: number | null;
+  /** The median ETF return at this time (null when unknown). */
+  medianPct: number | null;
 }
 
 export interface MemberView {
@@ -131,12 +140,14 @@ export interface EtfView extends EtfSummary {
   stakeUsd: number;
   entryClose: number;
   end: number;
+  /** Members allowed per team besides the captain (members ≥ this = full). */
+  maxBackers: number;
   memberList: MemberView[];
   chart: ChartPoint[];
   medianPct: number | null;
 }
 
-export type EntryState = "entered" | "live" | "won" | "draw" | "lost" | "refunded" | "voided";
+export type EntryState = "entered" | "live" | "won" | "lost" | "refunded" | "voided";
 
 export interface WalletEntryView {
   roundId: string;
@@ -169,7 +180,7 @@ export interface WalletView {
   usdc: BalanceView;
   assets: BalanceView[];
   entries: WalletEntryView[];
-  stats: { rounds: number; wins: number; draws: number; netUsd: number };
+  stats: { rounds: number; wins: number; netUsd: number };
 }
 
 export interface RoundSummary {
@@ -188,7 +199,6 @@ export interface LeaderRow {
   wallet: string;
   rounds: number;
   wins: number;
-  draws: number;
   netUsd: number;
   bestRetPct: number | null;
 }

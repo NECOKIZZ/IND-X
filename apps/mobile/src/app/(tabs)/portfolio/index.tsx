@@ -23,8 +23,7 @@ const STATE: Record<WalletEntryView["state"], string> = {
   entered: "Entered",
   live: "Live",
   won: `Beat ${brand.line}`,
-  draw: `On ${brand.line}`,
-  lost: `Below ${brand.line}`,
+  lost: `Not above ${brand.line}`,
   refunded: "Refunded",
   voided: "Void · refunded",
 };
@@ -32,8 +31,8 @@ const STATE: Record<WalletEntryView["state"], string> = {
 function EntryCard({ e }: { e: WalletEntryView }) {
   const c = useColors();
   const { run, busy } = useTxAction();
-  const tone = e.state === "won" ? c.up : e.state === "lost" ? c.down : e.state === "draw" ? c.line : c.textMuted;
-  const settled = ["won", "draw", "lost", "refunded", "voided"].includes(e.state);
+  const tone = e.state === "won" ? c.up : e.state === "lost" ? c.down : c.textMuted;
+  const settled = ["won", "lost", "refunded", "voided"].includes(e.state);
   return (
     <Card onPress={() => router.push(`/etf/${e.roundId}/${e.etfKey}`)} style={{ gap: space.sm, marginBottom: space.sm }}>
       <Row style={{ justifyContent: "space-between" }}>
@@ -103,7 +102,7 @@ export default function Portfolio() {
   const holdings = v.usdc.uiAmount + v.assets.reduce((s, b) => s + (b.usd ?? 0), 0);
   const live = v.entries.filter((e) => e.state === "entered" || e.state === "live");
   const past = v.entries.filter((e) => !(e.state === "entered" || e.state === "live"));
-  const losses = v.stats.rounds - v.stats.wins - v.stats.draws;
+  const losses = v.stats.rounds - v.stats.wins;
 
   return (
     <Screen onRefresh={() => w.refetch()}>
@@ -129,8 +128,8 @@ export default function Portfolio() {
           </View>
           <Row style={{ justifyContent: "space-between" }}>
             <Stat label="USDC" value={usd(v.usdc.uiAmount, 0)} />
-            <Stat label="SOL" value={v.sol.toFixed(2)} />
-            <Stat label="Record" value={`${v.stats.wins}–${v.stats.draws}–${losses}`} align="right" />
+            <Stat label="Gas (SOL)" value={v.sol.toFixed(3)} />
+            <Stat label="Record" value={`${v.stats.wins}W ${losses}L`} align="right" />
           </Row>
         </View>
       </View>
@@ -139,12 +138,12 @@ export default function Portfolio() {
         {config.data?.faucet ? (
           <Button
             small
-            title="Get test money"
+            title="Get test USDC + gas"
             onPress={async () => {
               try {
                 const r = await api.faucet(address);
                 success();
-                toast(`+${r.usdc} test USDC${r.sol ? ` and ${r.sol} SOL` : ""}`, "ok");
+                toast(`+${r.usdc} test USDC${r.sol ? ` and ${r.sol} SOL for network fees` : ""}`, "ok");
                 await w.refetch();
               } catch (e) {
                 toast((e as Error).message, "error");

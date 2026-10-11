@@ -92,7 +92,7 @@ export default function Results() {
                     <View>
                       <Text v="bodyStrong">{l.wallet === address ? "You" : short(l.wallet)}</Text>
                       <Text v="small" color={c.textMuted}>
-                        {l.wins}W {l.draws}D {l.rounds - l.wins - l.draws}L{l.bestRetPct !== null ? ` · best ${pct(l.bestRetPct)}` : ""}
+                        {l.wins}W {l.rounds - l.wins}L{l.bestRetPct !== null ? ` · best ${pct(l.bestRetPct)}` : ""}
                       </Text>
                     </View>
                   </Row>

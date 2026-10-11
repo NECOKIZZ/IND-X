@@ -4,7 +4,7 @@
 - **Create**: lock a basket of 3–10 allowed tokens worth at least **$10**, plus a **$5 USDC ticket**.
   - At least 3 of the tokens must be stocks or funds.
   - No token above 50%.
-  - Crypto (BTC, ETH) at most 20% in total.
+  - Crypto (BTC, ETH, SOL, BNB) at most 20% in total.
   - Name the ETF (up to 32 bytes) and set a buy fee of 0–2%.
 - **Clone**: a basket with the same tokens and the same weights to 1% as an existing ETF joins that team instead of making a new one.
 - **Back**: put a $5 ticket on an existing ETF. A team holds at most 20 members besides its creator.
@@ -18,13 +18,13 @@ Entries close **Monday 9:30am New York** (the US open), and the round ends **Fri
 - Prices are in USD per raw token, so the xStocks dividend multiplier counts.
 - If a scored token has no fresh price in a window, the round is void and everyone is refunded.
 
-## MEDIAN and payouts
-With `n` ETFs:
-- D = best return − this return.
-- k = n//2 + 1, and m = the k-th smallest D.
-- **Above MEDIAN** (D < m) wins. **On MEDIAN** draws: the ticket comes back. **Below** loses its ticket.
-- If at least half the ETFs tie at the top, those win and nobody draws.
-- Fewer than 4 ETFs, or every return equal: the round is void and everyone is refunded.
+## The median and payouts
+With `n` ETFs, the median is the middle return of the round (half-way between the middle two when `n` is even).
+- **Only ETFs strictly above the median win.** On the median or below it loses its ticket. There are no draws: everyone has to beat the median.
+- In an odd round the middle ETF is on the median, so it loses.
+- If nobody is strictly above the median (half or more tied at the top), the round is void and everyone is refunded.
+- Fewer than 4 ETFs, or every return equal: also void, everyone refunded.
+- (Internally: D = best return − this return, k = n//2 + 1, m = the k-th smallest D; accuracy uses D/m.)
 
 The pot is the losing tickets minus a **10% take** (5% platform, 5% season pot), plus any boost.
 - It is split across winning teams by **team tickets × accuracy**, where accuracy = (1 / (1 + D/m))^6.

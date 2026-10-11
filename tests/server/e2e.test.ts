@@ -111,8 +111,15 @@ describe("backend end to end", () => {
     const keys: string[] = [];
     for (const [i, [syms, weights]] of baskets.entries()) {
       const legs = syms.map((s, j) => ({ mint: mint(s), weightBps: weights[j] }));
-      await signAndSend(await api<TxPlan>("/v1/tx/buy", { body: { wallet: players[i].publicKey.toBase58(), legs, usd: 25 } }), players[i]);
+      // Buy more than the basket needs: the leftovers must NOT end up locked.
+      await signAndSend(await api<TxPlan>("/v1/tx/buy", { body: { wallet: players[i].publicKey.toBase58(), legs, usd: i === 0 ? 60 : 25 } }), players[i]);
+      const quote = await api<{ usd: number; maxUsd: number; legs: { amountRaw: string; usd: number; weightBps: number }[] }>("/v1/basket/quote", { body: { wallet: players[i].publicKey.toBase58(), legs, usd: 20 } });
       const plan = await api<TxPlan>("/v1/tx/create", { body: { wallet: players[i].publicKey.toBase58(), legs, usd: 20, name: `ETF ${i}`, buyFeeBps: 150 } });
+      // The screen's quote is exactly what the transaction locks: $20 at the weights, not the wallet's balance.
+      expect(plan.meta!.amounts).toEqual(quote.legs.map((l) => l.amountRaw));
+      expect(quote.usd).toBeCloseTo(20, 1);
+      expect(quote.maxUsd).toBeGreaterThan(quote.usd);
+      quote.legs.forEach((l) => expect(l.usd / quote.usd).toBeCloseTo(l.weightBps / 10_000, 2));
       expect(plan.meta!.clone).toBe(false);
       await signAndSend(plan, players[i]);
       keys.push(plan.meta!.teamKey as string);
@@ -155,6 +162,18 @@ describe("backend end to end", () => {
     const etf = await api<EtfView>(`/v1/rounds/1/etfs/${keys[0]}`);
     expect(etf.memberList).toHaveLength(2);
     expect(etf.chart.length).toBeGreaterThanOrEqual(2);
+    // Graphs are wired to real samples: the ETF line, the median line, the league sparklines.
+    expect(etf.chart.every((p) => p.medianPct !== null)).toBe(true);
+    expect(etf.chart.at(-1)!.retPct).toBeCloseTo(round.etfs.find((e) => e.key === keys[0])!.retPct!, 6);
+    expect(round.etfs.every((e) => e.spark.length >= 2)).toBe(true);
+    expect(round.medianSeries.length).toBeGreaterThanOrEqual(2);
+    expect(round.medianSeries.at(-1)!.pct).toBeCloseTo(round.medianPct!, 6);
+    // Only what the transaction actually locked is in the basket, even for the player who bought extra.
+    const locked = (await L.reader.entry(1n, players[0].publicKey))!.basket;
+    const prices = await api<{ mint: string; rawPrice: number; decimals: number }[]>("/v1/assets");
+    const lockedUsd = locked.reduce((s, l) => { const a = prices.find((p) => p.mint === l.mint.toBase58())!; return s + (Number(l.amount) / 10 ** a.decimals) * a.rawPrice; }, 0);
+    expect(lockedUsd).toBeGreaterThan(18);
+    expect(lockedUsd).toBeLessThan(22);
     expect(etf.legs.map((l) => l.symbol)).toEqual(["AAPLx", "MSFTx", "NVDAx"]);
 
     // The round ends: end samples, settlement, automatic payout.
@@ -172,10 +191,14 @@ describe("backend end to end", () => {
     expect(round.phase).toBe("settled");
     expect(round.pricing).toBe("final");
     const winners = round.etfs.filter((e) => e.standing === "above");
-    expect(winners.length).toBe(2); // 5 teams: top 2 win, the middle draws
-    expect(round.etfs.filter((e) => e.standing === "draw")).toHaveLength(1);
+    expect(winners.length).toBe(2); // 5 teams: only the top 2 are strictly above the median
+    expect(round.etfs.filter((e) => e.standing === "below")).toHaveLength(3);
 
     // Anyone can check the keeper's work.
+    // The final chart still works once entries are closed (from the published inputs).
+    const finalEtf = await api<EtfView>(`/v1/rounds/1/etfs/${keys[0]}`);
+    expect(finalEtf.chart.length).toBeGreaterThanOrEqual(3);
+    expect(round.medianSeries.length).toBeGreaterThanOrEqual(3);
     const v = await api<{ matches: boolean }>("/v1/rounds/1/verify");
     expect(v.matches).toBe(true);
 
@@ -183,7 +206,7 @@ describe("backend end to end", () => {
     const w = await api<WalletView>(`/v1/wallets/${players[5].publicKey.toBase58()}`);
     const e = w.entries.find((x) => x.roundId === "1")!;
     expect(e.paid).toBe(true);
-    expect(["won", "draw", "lost"]).toContain(e.state);
+    expect(["won", "lost"]).toContain(e.state);
     const winnerWallet = winners[0].captain;
     const ww = await api<WalletView>(`/v1/wallets/${winnerWallet}`);
     expect(ww.entries[0].state).toBe("won");
@@ -226,5 +249,16 @@ describe("backend end to end", () => {
     expect(after.entries[0].state).toBe("voided");
     expect(after.assets.find((a) => a.symbol === "AAPLx")!.raw).not.toBe("0");
   });
-});
 
+  it("keeper ticks over HTTP need the secret", async () => {
+    process.env.KEEPER_TICK_SECRET = "s3cret";
+    const no = await app.request("/v1/keeper/tick", { method: "POST" });
+    expect(no.status).toBe(401);
+    const wrong = await app.request("/v1/keeper/tick", { method: "POST", headers: { authorization: "Bearer nope" } });
+    expect(wrong.status).toBe(401);
+    const ok = await app.request("/v1/keeper/tick", { method: "POST", headers: { authorization: "Bearer s3cret" } });
+    expect(ok.status).toBe(200);
+    expect(((await ok.json()) as { ok: boolean }).ok).toBe(true);
+    delete process.env.KEEPER_TICK_SECRET;
+  });
+});

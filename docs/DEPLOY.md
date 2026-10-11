@@ -22,7 +22,19 @@ git add deployments/devnet.json                    # the server reads it
 
 This creates test USDC and test copies of the xStocks (priced by the real ones), initializes the league, registers the tokens and builds the lookup table. The admin keypair is the test tokens' mint authority: give it to the server as `FAUCET_KEYPAIR` for the faucet and the test desk.
 
-## 2. Server
+## 2. Server: free Render + a cron pinger (cheapest)
+
+`render.yaml` deploys the API on Render's **free** plan. Free instances sleep when idle, so the keeper doesn't run as a loop there; instead a cron calls `POST /v1/keeper/tick` every 5 minutes, which wakes the server and runs one keeper step (open a round, take price samples, settle, pay out). The ping also keeps the instance awake (one service fits in Render's 750 free hours a month).
+
+1. Render → New → Blueprint → this repo. Fill the secret env vars it asks for (`RPC_URL`, `DATABASE_URL`, `KEEPER_KEYPAIR`, `FAUCET_KEYPAIR`). `KEEPER_TICK_SECRET` is generated for you.
+2. GitHub → repo Settings → Secrets → Actions: add `KEEPER_URL` (the Render URL) and `KEEPER_TICK_SECRET` (copy it from Render). `.github/workflows/keeper-tick.yml` then pings every 5 minutes (or use cron-job.org with the same URL and header).
+3. Check the live build before testing anything with money: `curl $KEEPER_URL/v1/config` shows `version` (the deployed commit).
+
+Use Postgres (`DATABASE_URL`): a free instance's disk is wiped on every restart.
+
+## 2b. Server: an always-on process
+
+
 
 Any Node 22 host (Render, Fly, Railway, a VPS). One process can run both the API and the keeper:
 

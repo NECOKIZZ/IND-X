@@ -4,10 +4,11 @@
 // transaction that would fail.
 
 import { PublicKey, SystemProgram, type TransactionInstruction } from "@solana/web3.js";
-import { createTransferCheckedInstruction, createMintToInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { createSyncNativeInstruction, createTransferCheckedInstruction, createMintToInstruction, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
   DEFAULT_RULES,
   MAX_CREATOR_BUY_FEE_BPS,
+  NATIVE_SOL_MINT,
   basketEligibility,
   fitBasket,
   normaliseWeights,
@@ -53,36 +54,90 @@ async function usdcBalance(L: League, wallet: PublicKey) {
   return L.reader.tokenBalance(L.b.stakeAta(wallet));
 }
 
+/** SOL kept in the wallet for network fees when wrapping SOL into a basket. */
+export const GAS_RESERVE_LAMPORTS = 50_000_000n;
+
+export interface BasketQuote {
+  weights: number[];
+  /** The largest basket the wallet can lock at these weights (USD). */
+  maxUsd: number;
+  /** The basket the next transaction will lock (USD), capped at the request. */
+  usd: number;
+  legs: { mint: string; symbol: string; weightBps: number; amountRaw: string; uiAmount: number; usd: number; heldRaw: string }[];
+  /** Mainnet only: SOL to wrap into the SOL leg before locking (lamports). */
+  wrapLamports: string;
+}
+
+/**
+ * What a create transaction will lock for this wallet: per-leg amounts from
+ * the user's intent (USD × weights at live prices), capped by what the
+ * wallet holds. The Build screen shows this and planCreate builds from it,
+ * so the screen always shows exactly what will be signed. Never locks a
+ * wallet's whole balance unless asked for the max.
+ */
+export async function quoteBasket(L: League, walletStr: string | undefined, legsReq: CreateRequest["legs"], usd?: number): Promise<BasketQuote> {
+  const n = legsReq?.length ?? 0;
+  if (n < DEFAULT_RULES.minTokens || n > 10) throw new HttpError(400, `a basket holds ${DEFAULT_RULES.minTokens}–10 tokens`);
+  const mints = legsReq.map((l) => l.mint);
+  if (new Set(mints).size !== n) throw new HttpError(400, "each token once");
+  const assets = mints.map((m) => L.assetByMint(m) ?? (() => { throw new HttpError(400, `token ${m} is not in the league`); })());
+  const weights = normaliseWeights(legsReq.map((l) => l.weightBps));
+  const wallet = walletStr ? pk(walletStr, "wallet") : null;
+  const live = await livePrices(L);
+  const held = wallet
+    ? await Promise.all(assets.map((a) => L.reader.tokenBalance(getAssociatedTokenAddressSync(new PublicKey(a.mint), wallet, true, L.b.tokenProgramOf(new PublicKey(a.mint))))))
+    : assets.map(() => 0n);
+  // Mainnet SOL leg: the wallet's own SOL counts too (it's wrapped on lock), minus a gas reserve.
+  const solIdx = L.cluster === "mainnet" ? assets.findIndex((a) => a.mint === NATIVE_SOL_MINT) : -1;
+  let spendableSol = 0n;
+  if (solIdx >= 0 && wallet) {
+    const acc = await L.io.getAccount(wallet);
+    spendableSol = BigInt(acc?.lamports ?? 0) > GAS_RESERVE_LAMPORTS ? BigInt(acc!.lamports) - GAS_RESERVE_LAMPORTS : 0n;
+  }
+  const raws = held.map((h, i) => (i === solIdx ? h + spendableSol : h));
+  const legs = assets.map((a, i) => {
+    const p = live.sample.get(a.mint);
+    if (!p || p.value === 0n) throw new HttpError(503, `no price for ${a.symbol} right now`);
+    return { raw: raws[i], decimals: a.decimals, price: Number(p.value) / 1e18, weightBps: weights[i] };
+  });
+  const fit = fitBasket(legs, usd);
+  const wrap = solIdx >= 0 && fit.amounts[solIdx] > held[solIdx] ? fit.amounts[solIdx] - held[solIdx] : 0n;
+  return {
+    weights,
+    maxUsd: fit.maxUsd,
+    usd: fit.usd,
+    legs: assets.map((a, i) => ({
+      mint: a.mint,
+      symbol: a.symbol,
+      weightBps: weights[i],
+      amountRaw: fit.amounts[i].toString(),
+      uiAmount: Number(fit.amounts[i]) / 10 ** a.decimals,
+      usd: (Number(fit.amounts[i]) / 10 ** a.decimals) * legs[i].price,
+      heldRaw: raws[i].toString(),
+    })),
+    wrapLamports: wrap.toString(),
+  };
+}
+
 export async function planCreate(L: League, req: CreateRequest): Promise<TxPlan> {
   const wallet = pk(req.wallet, "wallet");
   const roundId = await openRoundId(L, req.roundId);
   const round = (await L.reader.round(roundId))!;
-  const n = req.legs?.length ?? 0;
-  if (n < DEFAULT_RULES.minTokens || n > 10) throw new HttpError(400, `a basket holds ${DEFAULT_RULES.minTokens}–10 tokens`);
-  const mints = req.legs.map((l) => l.mint);
-  if (new Set(mints).size !== n) throw new HttpError(400, "each token once");
-  const assets = mints.map((m) => L.assetByMint(m) ?? (() => { throw new HttpError(400, `token ${m} is not in the league`); })());
-  const weights = normaliseWeights(req.legs.map((l) => l.weightBps));
   const name = (req.name ?? "").trim();
   if (!name || Buffer.byteLength(name) > 32) throw new HttpError(400, "name: 1–32 bytes");
   const fee = Math.round(req.buyFeeBps ?? 100);
   if (fee < 0 || fee > MAX_CREATOR_BUY_FEE_BPS) throw new HttpError(400, "buy fee: 0–2%");
   if (await L.reader.entry(roundId, wallet)) throw new HttpError(409, "you're already in this round");
 
-  const live = await livePrices(L);
-  const raws = await Promise.all(assets.map((a) => L.reader.tokenBalance(getAssociatedTokenAddressSync(new PublicKey(a.mint), wallet, true, L.b.tokenProgramOf(new PublicKey(a.mint))))));
-  const legs = assets.map((a, i) => {
-    const p = live.sample.get(a.mint);
-    if (!p || p.value === 0n) throw new HttpError(503, `no price for ${a.symbol} right now`);
-    return { raw: raws[i], decimals: a.decimals, price: Number(p.value) / 1e18, weightBps: weights[i] };
-  });
-  const fit = fitBasket(legs, req.usd);
+  const q = await quoteBasket(L, req.wallet, req.legs, req.usd);
+  const mints = q.legs.map((l) => l.mint);
+  const weights = q.weights;
   const minUsd = Number(DEFAULT_RULES.minValue / 10n ** 18n);
-  if (fit.usd < minUsd) {
-    throw new HttpError(409, `you need at least $${minUsd} of this basket at these weights (you can lock $${fit.maxUsd.toFixed(2)}). Buy the stocks first.`);
+  if (q.usd < minUsd) {
+    throw new HttpError(409, `you need at least $${minUsd} of this basket at these weights (you can lock $${q.maxUsd.toFixed(2)}). Buy the stocks first.`);
   }
   // Rules apply to the declared weights (the locked amounts match them to rounding).
-  const totalE18 = BigInt(Math.round(fit.usd * 1e6)) * 10n ** 12n;
+  const totalE18 = BigInt(Math.round(q.usd * 1e6)) * 10n ** 12n;
   const values = weights.map((w) => (totalE18 * BigInt(w)) / 10_000n);
   const crypto = L.assets.filter((a) => a.kind === "crypto").map((a) => a.mint);
   const bad = basketEligibility(mints, values, { ...DEFAULT_RULES, cryptoTokens: crypto });
@@ -92,13 +147,21 @@ export async function planCreate(L: League, req: CreateRequest): Promise<TxPlan>
   const teamKey = teamKeyFromWeights(mints, weights);
   const existing = await L.reader.team(roundId, teamKey);
   if (existing && existing.members >= round.maxBackers) throw new HttpError(409, "that ETF is full");
-  const ix = await L.b.enterCreator(wallet, roundId, teamKey, assets.map((a, i) => ({ mint: new PublicKey(a.mint), amount: fit.amounts[i], weightBps: weights[i] })), name, fee);
+  const ixs: TransactionInstruction[] = [];
+  const wrap = BigInt(q.wrapLamports);
+  if (wrap > 0n) {
+    // Wrap just enough SOL for the SOL leg.
+    const sol = new PublicKey(NATIVE_SOL_MINT);
+    const ata = getAssociatedTokenAddressSync(sol, wallet, true, TOKEN_PROGRAM_ID);
+    ixs.push(ensureAtaIx(wallet, wallet, sol, TOKEN_PROGRAM_ID), SystemProgram.transfer({ fromPubkey: wallet, toPubkey: ata, lamports: wrap }), createSyncNativeInstruction(ata));
+  }
+  ixs.push(await L.b.enterCreator(wallet, roundId, teamKey, q.legs.map((l, i) => ({ mint: new PublicKey(l.mint), amount: BigInt(l.amountRaw), weightBps: weights[i] })), name, fee));
   return {
-    transactions: [await plan(L, wallet, [ix])],
+    transactions: [await plan(L, wallet, ixs)],
     summary: existing
-      ? `Same basket as “${existing.name}”: you join that ETF as a co-creator. Locks $${fit.usd.toFixed(2)} of stocks + a $${toUnits(round.stake, L.deployment.stakeDecimals)} ticket.`
-      : `Creates “${name}”: locks $${fit.usd.toFixed(2)} of stocks + a $${toUnits(round.stake, L.deployment.stakeDecimals)} ticket.`,
-    meta: { roundId: roundId.toString(), teamKey, clone: !!existing, basketUsd: fit.usd, maxUsd: fit.maxUsd, amounts: fit.amounts.map(String), weightsBps: weights },
+      ? `Same basket as “${existing.name}”: you join that ETF as a co-creator. Locks $${q.usd.toFixed(2)} of stocks + a $${toUnits(round.stake, L.deployment.stakeDecimals)} ticket.`
+      : `Creates “${name}”: locks $${q.usd.toFixed(2)} of stocks + a $${toUnits(round.stake, L.deployment.stakeDecimals)} ticket.`,
+    meta: { roundId: roundId.toString(), teamKey, clone: !!existing, basketUsd: q.usd, maxUsd: q.maxUsd, amounts: q.legs.map((l) => l.amountRaw), weightsBps: weights, quote: q },
   };
 }
 

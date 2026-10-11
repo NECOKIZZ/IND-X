@@ -9,7 +9,9 @@ export function usd(n: number | null | undefined, digits = 2): string {
 export function pct(p: number | null | undefined, digits = 2): string {
   if (p === null || p === undefined || !Number.isFinite(p)) return "—";
   const s = Math.abs(p).toFixed(digits);
-  return p > 0 ? `+${s}%` : p < 0 ? `−${s}%` : `${s}%`;
+  // A move that rounds to zero shows as 0, never "−0.00%".
+  if (Number(s) === 0) return `${(0).toFixed(digits)}%`;
+  return p > 0 ? `+${s}%` : `−${s}%`;
 }
 
 export const short = (a: string, n = 4) => (a.length > 2 * n + 1 ? `${a.slice(0, n)}…${a.slice(-n)}` : a);

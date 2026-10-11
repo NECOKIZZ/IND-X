@@ -83,7 +83,6 @@ export interface SettledTeam {
   ret: bigint;
   members: number;
   isWinner: boolean;
-  isDraw: boolean;
   /** What one backer ticket on this team pays (after the creator fee). */
   ticketPayout: bigint;
 }
@@ -204,7 +203,6 @@ export function settleRound(
       const g = (t.gain * input.stake) / t.teamStake;
       return input.stake + g - (g * BigInt(params.creatorFeeBps)) / 10_000n;
     }
-    if (t.isDraw) return input.stake;
     return r.losingStakes > 0n ? (r.refundedToLosers * input.stake) / r.losingStakes : 0n;
   };
   const summary = (scored: boolean): SettledTeam[] =>
@@ -216,7 +214,6 @@ export function settleRound(
         ret: t.ret,
         members: memberIndex[i].length,
         isWinner: scored && r.teams[i].isWinner,
-        isDraw: scored && r.teams[i].isDraw,
         ticketPayout: ticketPayout(i),
       };
     });
