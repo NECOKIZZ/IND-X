@@ -1,11 +1,11 @@
-// Portfolio: balance hero, wallet actions, this round's entry, holdings and
-// history.
+// Portfolio: avatar and @tag, balance with total P&L, send / receive (and
+// test funds on testnet), this round's entry, holdings, history, sign out.
 
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { router } from "expo-router";
 import type { WalletEntryView } from "@indx/core";
-import { brand, radius, signColor, space, useAppearance, useColors, type Appearance } from "@/theme";
+import { brand, radius, signColor, space, useColors } from "@/theme";
 import { useAssets, useConfig, useWalletView } from "@/lib/queries";
 import { api } from "@/lib/api";
 import { pct, short, usd } from "@/lib/format";
@@ -13,11 +13,11 @@ import { success } from "@/lib/haptics";
 import { useWallet } from "@/wallet/WalletProvider";
 import { AssetLogo } from "@/components/AssetLogo";
 import { Glow } from "@/components/Glow";
-import { PageTitle, TopBar } from "@/components/Header";
+import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { useToast } from "@/components/Toast";
 import { useTxAction } from "@/components/TxAction";
-import { Button, Card, Divider, Empty, ErrorView, Label, Num, Pill, Row, Screen, SectionTitle, Segmented, Skeleton, Stat, Text } from "@/components/ui";
+import { Button, Card, Divider, Empty, ErrorView, Label, Num, Pill, Row, Screen, SectionTitle, Skeleton, Stat, Text } from "@/components/ui";
 
 const STATE: Record<WalletEntryView["state"], string> = {
   entered: "Entered",
@@ -78,21 +78,12 @@ export default function Portfolio() {
   const { address, kind, disconnect } = useWallet();
   const w = useWalletView(address);
 
-  if (!address) {
-    return (
-      <Screen>
-        <TopBar />
-        <PageTitle title="Portfolio" />
-        <Empty title="Connect a wallet" body={brand.pitch} action={<Button title="Connect" onPress={() => router.push("/connect")} />} />
-        <AppearancePicker />
-      </Screen>
-    );
-  }
+  if (!address) return <Screen>{null}</Screen>;
   if (w.isLoading) {
     return (
       <Screen>
-        <TopBar />
-        <Skeleton height={240} style={{ borderRadius: radius.xl }} />
+        <Skeleton height={56} width={200} />
+        <Skeleton height={240} style={{ borderRadius: radius.xl, marginTop: space.lg }} />
       </Screen>
     );
   }
@@ -103,42 +94,85 @@ export default function Portfolio() {
   const live = v.entries.filter((e) => e.state === "entered" || e.state === "live");
   const past = v.entries.filter((e) => !(e.state === "entered" || e.state === "live"));
   const losses = v.stats.rounds - v.stats.wins;
+  const pnl = v.stats.netUsd;
 
   return (
     <Screen onRefresh={() => w.refetch()}>
-      <TopBar />
+      {/* Profile: avatar, @tag, address, sign out */}
+      <Row gap={space.md} style={{ marginBottom: space.lg }}>
+        <Avatar wallet={address} size={52} />
+        <View style={{ flex: 1 }}>
+          {v.tag ? (
+            <Text v="heading" style={{ fontSize: 22, lineHeight: 26 }}>
+              @{v.tag}
+            </Text>
+          ) : (
+            <Pressable onPress={() => router.push("/tag")} hitSlop={6}>
+              <Text v="bodyStrong" color={c.brand}>
+                Claim your @tag
+              </Text>
+            </Pressable>
+          )}
+          <Pressable
+            hitSlop={6}
+            onPress={async () => {
+              await Clipboard.setStringAsync(address);
+              success();
+              toast("Address copied", "ok");
+            }}
+          >
+            <Row gap={5}>
+              <Text v="small" color={c.textMuted}>
+                {short(address, 4)}
+              </Text>
+              <Icon name="copy" size={12} color={c.textMuted} />
+            </Row>
+          </Pressable>
+        </View>
+        <Pressable onPress={() => disconnect()} style={({ pressed }) => ({ height: 34, paddingHorizontal: 14, borderRadius: 17, backgroundColor: c.fill, justifyContent: "center", opacity: pressed ? 0.8 : 1 })}>
+          <Text v="smallStrong" color={c.down}>
+            Sign out
+          </Text>
+        </Pressable>
+      </Row>
+
       <View style={{ borderRadius: radius.xl, overflow: "hidden", backgroundColor: c.surface, borderWidth: 1, borderColor: c.border }}>
         <Glow variant={1} />
         <View style={{ padding: space.xl, gap: space.xl }}>
-          <Row style={{ justifyContent: "space-between" }}>
-            <Label color={c.text}>{kind === "dev" ? "Test wallet" : "Wallet"}</Label>
-            <Text v="mono" color={c.textMuted} selectable>
-              {short(address, 5)}
-            </Text>
-          </Row>
           <View>
-            <Label>Total balance</Label>
+            <Label>{kind === "dev" ? "Total balance · test wallet" : "Total balance"}</Label>
             <Num v="display">{usd(holdings)}</Num>
-            {v.stats.rounds ? (
-              <Text v="small" color={signColor(c, v.stats.netUsd)}>
-                {v.stats.netUsd >= 0 ? "+" : "−"}
-                {usd(Math.abs(v.stats.netUsd))} on tickets over {v.stats.rounds} {v.stats.rounds === 1 ? "round" : "rounds"}
+            <Row gap={8} style={{ marginTop: 4 }}>
+              <Pill label={`${pnl > 0 ? "▲" : pnl < 0 ? "▼" : ""} ${pnl >= 0 ? "+" : "−"}${usd(Math.abs(pnl))}`.trim()} color={signColor(c, pnl)} bg={pnl > 0 ? c.upSoft : pnl < 0 ? c.downSoft : c.fill} />
+              <Text v="small" color={c.textMuted}>
+                total P&amp;L{v.stats.rounds ? ` · ${v.stats.rounds} ${v.stats.rounds === 1 ? "round" : "rounds"}` : ""}
               </Text>
-            ) : null}
+            </Row>
           </View>
           <Row style={{ justifyContent: "space-between" }}>
             <Stat label="USDC" value={usd(v.usdc.uiAmount, 0)} />
             <Stat label="Gas (SOL)" value={v.sol.toFixed(3)} />
-            <Stat label="Record" value={`${v.stats.wins}W ${losses}L`} align="right" />
+            <View style={{ alignItems: "flex-end" }}>
+              <Label>Record</Label>
+              <Text v="title" style={{ fontSize: 24, lineHeight: 30 }}>
+                <Text v="title" color={c.up} style={{ fontSize: 24, lineHeight: 30 }}>{`${v.stats.wins}W`}</Text>{" "}
+                <Text v="title" color={losses ? c.down : c.text} style={{ fontSize: 24, lineHeight: 30 }}>{`${losses}L`}</Text>
+              </Text>
+            </View>
           </Row>
         </View>
       </View>
 
-      <Row style={{ marginTop: space.md, flexWrap: "wrap" }}>
+      {/* Send, receive, and test funds on testnet only */}
+      <Row style={{ marginTop: space.md }}>
+        <Button small title="Send" style={{ flex: 1 }} onPress={() => router.push("/send")} />
+        <Button small kind="secondary" title="Receive" style={{ flex: 1 }} onPress={() => router.push("/receive")} />
         {config.data?.faucet ? (
           <Button
             small
-            title="Get test USDC + gas"
+            kind="secondary"
+            title="Test funds"
+            style={{ flex: 1 }}
             onPress={async () => {
               try {
                 const r = await api.faucet(address);
@@ -151,17 +185,6 @@ export default function Portfolio() {
             }}
           />
         ) : null}
-        <Button
-          small
-          kind="secondary"
-          title="Copy address"
-          onPress={async () => {
-            await Clipboard.setStringAsync(address);
-            success();
-            toast("Address copied", "ok");
-          }}
-        />
-        <Button small kind="ghost" title="Disconnect" onPress={() => disconnect()} />
       </Row>
 
       <SectionTitle title="This round" />
@@ -169,7 +192,7 @@ export default function Portfolio() {
 
       {v.assets.length ? (
         <>
-          <SectionTitle title="Stocks" />
+          <SectionTitle title="Holdings" />
           <Card style={{ paddingVertical: space.xs }}>
             {v.assets.map((b, i) => {
               const a = priced.get(b.mint);
@@ -208,33 +231,6 @@ export default function Portfolio() {
           ))}
         </>
       ) : null}
-
-      <AppearancePicker />
-
-      <Row gap={6} style={{ marginTop: space.xxl, justifyContent: "center" }}>
-        <Icon name="info" size={14} color={c.textFaint} />
-        <Text v="small" color={c.textFaint}>
-          {config.data?.cluster === "mainnet" ? "Mainnet · real money" : "Testnet · test money only"}
-        </Text>
-      </Row>
     </Screen>
-  );
-}
-
-function AppearancePicker() {
-  const { appearance, setAppearance } = useAppearance();
-  return (
-    <>
-      <SectionTitle title="Appearance" />
-      <Segmented<Appearance>
-        value={appearance}
-        onChange={setAppearance}
-        options={[
-          { value: "dark", label: "Dark" },
-          { value: "light", label: "Light" },
-          { value: "system", label: "System" },
-        ]}
-      />
-    </>
   );
 }

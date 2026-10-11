@@ -181,6 +181,8 @@ export interface WalletView {
   assets: BalanceView[];
   entries: WalletEntryView[];
   stats: { rounds: number; wins: number; netUsd: number };
+  /** The wallet's @tag, if it claimed one. */
+  tag: string | null;
 }
 
 export interface RoundSummary {
@@ -197,6 +199,7 @@ export interface RoundSummary {
 
 export interface LeaderRow {
   wallet: string;
+  tag?: string | null;
   rounds: number;
   wins: number;
   netUsd: number;

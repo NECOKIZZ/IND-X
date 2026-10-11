@@ -1,29 +1,91 @@
-// Results: past rounds and the all-time leaderboard.
+// Results: the live pool, the all-time leaderboard and past rounds.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { brand, signColor, space, useColors } from "@/theme";
-import { useLeaderboard, useRounds } from "@/lib/queries";
+import { brand, radius, signColor, space, useColors } from "@/theme";
+import { useLeaderboard, usePool, useRounds } from "@/lib/queries";
 import { pct, short, usd, when } from "@/lib/format";
 import { useWallet } from "@/wallet/WalletProvider";
-import { PageTitle, TopBar } from "@/components/Header";
+import { PageTitle } from "@/components/Header";
+import { Glow } from "@/components/Glow";
 import { Icon } from "@/components/Icon";
-import { Card, Divider, Empty, Label, Num, Pill, Row, Screen, Segmented, Skeleton, Text } from "@/components/ui";
+import { Card, Divider, Empty, Label, Num, Pill, Row, Screen, Segmented, Skeleton, Stat, Text } from "@/components/ui";
+
+/** Counts smoothly to a new value when it changes. */
+function useTicker(target: number) {
+  const [shown, setShown] = useState(target);
+  const from = useRef(target);
+  useEffect(() => {
+    const start = Date.now();
+    const a = from.current;
+    const id = setInterval(() => {
+      const k = Math.min(1, (Date.now() - start) / 900);
+      const v = a + (target - a) * (1 - Math.pow(1 - k, 3));
+      setShown(v);
+      if (k >= 1) {
+        from.current = target;
+        clearInterval(id);
+      }
+    }, 30);
+    return () => clearInterval(id);
+  }, [target]);
+  return shown;
+}
+
+function PoolCard() {
+  const pool = usePool().data;
+  if (!pool) return <Skeleton height={220} style={{ borderRadius: radius.xl, marginBottom: space.md }} />;
+  return <PoolBody seasonUsd={pool.seasonUsd} roundUsd={pool.roundUsd} />;
+}
+
+function PoolBody({ seasonUsd, roundUsd }: { seasonUsd: number; roundUsd: number }) {
+  const c = useColors();
+  const total = seasonUsd + roundUsd;
+  const shown = useTicker(total);
+  // What it was when you opened the page, to show it growing.
+  const [first] = useState(total);
+  const grown = total - first;
+  return (
+    <View style={{ borderRadius: radius.xl, overflow: "hidden", backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, marginBottom: space.md }}>
+      <Glow variant={0} />
+      <View style={{ padding: space.xl, gap: space.lg }}>
+        <Row style={{ justifyContent: "space-between" }}>
+          <Label color={c.text}>Leaderboard pool</Label>
+          <Row gap={6}>
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: c.up }} />
+            <Label color={c.up}>Live</Label>
+          </Row>
+        </Row>
+        <View>
+          <Num v="display">{usd(shown)}</Num>
+          <Text v="small" color={c.textMuted}>
+            {grown > 0 ? <Text v="small" color={c.up}>{`+${usd(grown)} `}</Text> : null}
+            {grown > 0 ? "while you've been here" : "Grows with every ticket, round after round"}
+          </Text>
+        </View>
+        <Row style={{ justifyContent: "space-between" }}>
+          <Stat label="This round" value={usd(roundUsd, 0)} />
+          <Stat label="Season pot" value={usd(seasonUsd, 2)} align="right" />
+        </Row>
+      </View>
+    </View>
+  );
+}
 
 export default function Results() {
   const c = useColors();
-  const [tab, setTab] = useState<"rounds" | "leaders">("rounds");
+  const [tab, setTab] = useState<"rounds" | "leaders">("leaders");
   const rounds = useRounds();
   const leaders = useLeaderboard();
   const { address } = useWallet();
 
   return (
     <Screen onRefresh={() => Promise.all([rounds.refetch(), leaders.refetch()])}>
-      <TopBar />
       <PageTitle title="Results" />
-      <Segmented value={tab} onChange={setTab} options={[{ value: "rounds", label: "Rounds" }, { value: "leaders", label: "Leaderboard" }]} />
+      <Segmented value={tab} onChange={setTab} options={[{ value: "leaders", label: "Leaderboard" }, { value: "rounds", label: "Rounds" }]} />
       <View style={{ marginTop: space.lg, gap: space.sm }}>
+        {tab === "leaders" ? <PoolCard /> : null}
         {tab === "rounds" ? (
           rounds.isLoading ? (
             <Skeleton height={140} />
@@ -90,7 +152,7 @@ export default function Results() {
                       </Num>
                     </View>
                     <View>
-                      <Text v="bodyStrong">{l.wallet === address ? "You" : short(l.wallet)}</Text>
+                      <Text v="bodyStrong">{l.wallet === address ? "You" : l.tag ? `@${l.tag}` : short(l.wallet)}</Text>
                       <Text v="small" color={c.textMuted}>
                         {l.wins}W {l.rounds - l.wins}L{l.bestRetPct !== null ? ` · best ${pct(l.bestRetPct)}` : ""}
                       </Text>

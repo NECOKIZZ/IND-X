@@ -27,7 +27,7 @@
       "package": "app.indx.mobile"
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [

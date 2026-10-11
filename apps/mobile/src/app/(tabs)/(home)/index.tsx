@@ -1,17 +1,22 @@
-// League: this week's round. A glowing hero (phase, countdown, pot, the
+// League: this week's round. The app bar (hides as you scroll down), the
+// guide and hot-ETF carousel, a glowing hero (phase, countdown, pot, the
 // median), your entry, live standings around the median, and activity.
 
-import { Pressable, View } from "react-native";
+import { useState } from "react";
+import { Pressable, RefreshControl, View } from "react-native";
+import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import type { RoundView } from "@indx/core";
-import { brand, radius, signColor, space, useColors } from "@/theme";
+import { brand, radius, signColor, space, TAB_BAR_SPACE, useColors } from "@/theme";
 import { useActivity, useRound, useWalletView } from "@/lib/queries";
 import { pct, short, usd, when } from "@/lib/format";
 import { useWallet } from "@/wallet/WalletProvider";
-import { Button, Card, Divider, Empty, ErrorView, Label, Num, Row, Screen, SectionTitle, Skeleton, Stat, Text } from "@/components/ui";
+import { Button, Card, Divider, Empty, ErrorView, Label, Num, Row, SectionTitle, Skeleton, Stat, Text } from "@/components/ui";
+import { Carousel } from "@/components/Carousel";
 import { Countdown } from "@/components/Countdown";
 import { Glow } from "@/components/Glow";
-import { TopBar } from "@/components/Header";
+import { APP_BAR_HEIGHT, AppBar } from "@/components/Header";
 import { Icon } from "@/components/Icon";
 import { Standings } from "@/components/Standings";
 import { Sparkline } from "@/components/Sparkline";
@@ -95,20 +100,7 @@ function YourEntry({ r }: { r: RoundView }) {
   const { address } = useWallet();
   const w = useWalletView(address);
   const e = w.data?.entries.find((x) => x.roundId === r.id);
-  if (!address) {
-    return (
-      <Card style={{ marginTop: space.md, gap: space.md }}>
-        <Text v="title" style={{ fontSize: 26, lineHeight: 30 }}>
-          {brand.tagline}
-        </Text>
-        <Text color={c.textMuted}>{brand.pitch}</Text>
-        <Row>
-          <Button title="Get started" onPress={() => router.push("/connect")} />
-          <Button title="Learn more" kind="ghost" icon="arrow" onPress={() => router.push("/rules")} />
-        </Row>
-      </Card>
-    );
-  }
+  if (!address) return null;
   if (!e) {
     if (r.phase !== "open") return null;
     return (
@@ -146,6 +138,52 @@ function YourEntry({ r }: { r: RoundView }) {
   );
 }
 
+/** Page with the app bar on top that slides away as you scroll down and comes back as you scroll up. */
+function LeaguePage({ children, onRefresh }: { children: React.ReactNode; onRefresh?: () => Promise<unknown> }) {
+  const c = useColors();
+  const insets = useSafeAreaInsets();
+  const barH = insets.top + space.sm + APP_BAR_HEIGHT;
+  const last = useSharedValue(0);
+  const hidden = useSharedValue(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const onScroll = useAnimatedScrollHandler((e) => {
+    const y = e.contentOffset.y;
+    if (y > last.value + 4 && y > APP_BAR_HEIGHT) hidden.value = withTiming(1, { duration: 220 });
+    else if (y < last.value - 4 || y <= 0) hidden.value = withTiming(0, { duration: 220 });
+    last.value = y;
+  });
+  const bar = useAnimatedStyle(() => ({ transform: [{ translateY: -hidden.value * (barH + 4) }] }));
+  return (
+    <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <Animated.ScrollView
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: space.lg + 4, paddingTop: barH + space.sm, paddingBottom: TAB_BAR_SPACE + insets.bottom }}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl
+              tintColor={c.textMuted}
+              progressViewOffset={barH}
+              refreshing={refreshing}
+              onRefresh={async () => {
+                setRefreshing(true);
+                await onRefresh().catch(() => {});
+                setRefreshing(false);
+              }}
+            />
+          ) : undefined
+        }
+      >
+        {children}
+      </Animated.ScrollView>
+      <Animated.View style={[{ position: "absolute", left: 0, right: 0, top: 0, paddingTop: insets.top + space.sm, paddingHorizontal: space.lg + 4, backgroundColor: c.bg }, bar]}>
+        <AppBar />
+      </Animated.View>
+    </View>
+  );
+}
+
 export default function League() {
   const c = useColors();
   const round = useRound();
@@ -155,19 +193,19 @@ export default function League() {
 
   if (round.isLoading) {
     return (
-      <Screen>
-        <TopBar />
-        <Skeleton height={300} style={{ borderRadius: radius.xl }} />
+      <LeaguePage>
+        <Skeleton height={186} style={{ borderRadius: radius.xl }} />
+        <Skeleton height={300} style={{ borderRadius: radius.xl, marginTop: space.md }} />
         <Skeleton height={84} style={{ marginTop: space.md }} />
-        <Skeleton height={84} style={{ marginTop: space.sm }} />
-      </Screen>
+      </LeaguePage>
     );
   }
   if (round.error) return <ErrorView error={round.error} onRetry={() => round.refetch()} />;
   const r = round.data!;
   return (
-    <Screen onRefresh={() => Promise.all([round.refetch(), activity.refetch()])}>
-      <TopBar />
+    <LeaguePage onRefresh={() => Promise.all([round.refetch(), activity.refetch()])}>
+      <Carousel round={r} />
+      <View style={{ height: space.md }} />
       <Hero r={r} />
       <YourEntry r={r} />
       <SectionTitle title={r.phase === "settled" ? "Final standings" : "Standings"} />
@@ -197,6 +235,6 @@ export default function League() {
           </Card>
         </>
       ) : null}
-    </Screen>
+    </LeaguePage>
   );
 }

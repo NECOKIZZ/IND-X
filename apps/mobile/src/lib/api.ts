@@ -24,6 +24,12 @@ export interface BasketQuote {
   wrapLamports: string;
 }
 
+export interface PoolView {
+  seasonUsd: number;
+  roundUsd: number;
+  roundId: string | null;
+}
+
 export class ApiError extends Error {
   constructor(readonly status: number, message: string) {
     super(message);
@@ -66,5 +72,10 @@ export const api = {
   planBoost: (wallet: string, usd: number, roundId?: string) => call<TxPlan>("/v1/tx/boost", { wallet, usd, roundId }),
   send: (tx: string) => call<{ signature: string }>("/v1/tx/send", { tx }),
   faucet: (wallet: string) => call<{ usdc: number; sol: number }>("/v1/faucet", { wallet }),
+  pool: () => call<PoolView>("/v1/pool"),
+  planTransfer: (r: { wallet: string; to: string; mint: string; amount: number }) => call<TxPlan>("/v1/tx/transfer", r),
+  resolveTag: (tag: string) => call<{ tag: string; wallet: string }>(`/v1/tags/${encodeURIComponent(tag.replace(/^@/, ""))}`),
+  tagChallenge: (wallet: string, tag: string) => call<{ transaction: string; tag: string }>("/v1/tags/challenge", { wallet, tag }),
+  tagClaim: (wallet: string, tag: string, signed: string) => call<{ tag: string }>("/v1/tags/claim", { wallet, tag, signed }),
   registerPush: (wallet: string, token: string) => call<{ ok: true }>("/v1/push", { wallet, token }),
 };

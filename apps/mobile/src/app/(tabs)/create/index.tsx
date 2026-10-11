@@ -2,7 +2,7 @@
 // it. If the wallet doesn't hold enough of the basket, it can buy it here
 // first (Jupiter on mainnet, the test desk on testnet).
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { BlurView } from "expo-blur";
@@ -12,11 +12,12 @@ import type { AssetView } from "@indx/core";
 import { brand, palette, radius, signColor, space, TAB_BAR_SPACE, type, useColors } from "@/theme";
 import { useAssets, useConfig, useRound, useWalletView } from "@/lib/queries";
 import { api, type BasketQuote } from "@/lib/api";
+import { setTabBarHidden } from "@/lib/chrome";
 import { bpsToPct, pct, usd } from "@/lib/format";
 import { tap } from "@/lib/haptics";
 import { useWallet } from "@/wallet/WalletProvider";
 import { AssetLogo } from "@/components/AssetLogo";
-import { PageTitle, TopBar } from "@/components/Header";
+import { PageTitle } from "@/components/Header";
 import { Icon } from "@/components/Icon";
 import { useTxAction } from "@/components/TxAction";
 import { useToast } from "@/components/Toast";
@@ -24,7 +25,7 @@ import { Button, Card, Chip, Divider, Empty, IconButton, Label, Num, Row, Screen
 
 type Step = "pick" | "weights" | "details";
 type Filter = "all" | "stock" | "etf" | "crypto";
-const STEP_BPS = 500; // weights move in 5% steps
+const STEP_BPS = 100; // weights move in 1% steps (or type them on the keypad)
 const STEPS: Step[] = ["pick", "weights", "details"];
 
 function equalWeights(n: number): number[] {
@@ -52,6 +53,9 @@ export default function Create() {
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [weights, setWeights] = useState<number[]>([]);
+  /** The leg whose weight the keypad is typing, and what's been typed. */
+  const [editing, setEditing] = useState<number | null>(null);
+  const [typed, setTyped] = useState("");
   const [size, setSize] = useState<number | null>(null);
   const [name, setName] = useState("");
   const [fee, setFee] = useState(100);
@@ -103,7 +107,6 @@ export default function Create() {
   if (round.data && round.data.phase !== "open") {
     return (
       <Screen>
-        <TopBar />
         <PageTitle title="Build" />
         <Empty title="Entries are closed" body={`Round ${round.data.id} is under way. The next round opens as soon as it's settled.`} action={<Button title="Follow the round" small onPress={() => router.push("/")} />} />
       </Screen>
@@ -112,7 +115,6 @@ export default function Create() {
 
   const header = (
     <>
-      <TopBar />
       <PageTitle title={step === "pick" ? "Pick your stocks" : step === "weights" ? "Set the weights" : "Size and name"} />
       <Steps step={step} />
     </>
@@ -207,9 +209,13 @@ export default function Create() {
                     </Text>
                   </View>
                   <IconButton icon="minus" size={34} onPress={() => nudge(i, -STEP_BPS)} disabled={(weights[i] ?? 0) <= 0} />
-                  <Num v="heading" style={{ width: 56, textAlign: "center" }}>
-                    {bpsToPct(weights[i] ?? 0)}
-                  </Num>
+                  <Pressable
+                    accessibilityLabel={`Type the weight of ${a.ticker}`}
+                    onPress={() => (setEditing(i), setTyped(""))}
+                    style={{ width: 64, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: editing === i ? c.brand : c.border, backgroundColor: editing === i ? c.upSoft : c.fill }}
+                  >
+                    <Num v="bodyStrong">{bpsToPct(weights[i] ?? 0)}</Num>
+                  </Pressable>
                   <IconButton icon="plus" size={34} onPress={() => nudge(i, STEP_BPS)} />
                 </Row>
               </View>
@@ -225,12 +231,29 @@ export default function Create() {
             <Button title="Equal" kind="outline" small onPress={() => setWeights(equalWeights(picked.length))} />
           </Row>
         </Screen>
-        <ActionBar>
-          <Row>
-            <Button title="Back" kind="secondary" onPress={() => setStep("pick")} />
-            <Button title="Continue" icon="arrow" style={{ flex: 1 }} disabled={!!weightError} onPress={() => setStep("details")} />
-          </Row>
-        </ActionBar>
+        {editing !== null ? (
+          <Keypad
+            onDigit={(d) => {
+              const next = (typed + d).replace(/^0+(?=\d)/, "").slice(-3);
+              setTyped(next);
+              const v = Math.min(100, Number(next) || 0);
+              setWeights((w) => w.map((x, j) => (j === editing ? v * 100 : x)));
+            }}
+            onClose={() => setEditing(null)}
+            onReview={() => {
+              setEditing(null);
+              if (!weightError) setStep("details");
+            }}
+            reviewDisabled={!!weightError}
+          />
+        ) : (
+          <ActionBar>
+            <Row>
+              <Button title="Back" kind="secondary" onPress={() => setStep("pick")} />
+              <Button title="Continue" icon="arrow" style={{ flex: 1 }} disabled={!!weightError} onPress={() => setStep("details")} />
+            </Row>
+          </ActionBar>
+        )}
       </View>
     );
   }
@@ -414,6 +437,54 @@ function Steps({ step }: { step: Step }) {
         <View key={s} style={{ flex: 1, height: 3, borderRadius: 2, backgroundColor: i <= at ? c.text : c.fill }} />
       ))}
     </Row>
+  );
+}
+
+/** Typing a weight: round glass keys 1–9, 0 alone below, and Review basket. */
+function Keypad({ onDigit, onClose, onReview, reviewDisabled }: { onDigit: (d: string) => void; onClose: () => void; onReview: () => void; reviewDisabled: boolean }) {
+  const c = useColors();
+  const insets = useSafeAreaInsets();
+  useEffect(() => {
+    setTabBarHidden(true);
+    return () => setTabBarHidden(false);
+  }, []);
+  const key = (d: string) => (
+    <Pressable
+      key={d}
+      accessibilityLabel={d}
+      onPress={() => onDigit(d)}
+      style={({ pressed }) => ({
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        alignItems: "center",
+        justifyContent: "center",
+        borderWidth: 1,
+        borderColor: c.glassBorder,
+        backgroundColor: pressed ? c.upSoft : c.scheme === "dark" ? "rgba(238,242,237,0.07)" : "rgba(41,50,52,0.06)",
+      })}
+    >
+      <Text v="title" style={{ fontSize: 26, lineHeight: 30 }}>
+        {d}
+      </Text>
+    </Pressable>
+  );
+  const row = (ds: string[]) => (
+    <Row style={{ justifyContent: "space-around" }}>{ds.map(key)}</Row>
+  );
+  return (
+    <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, overflow: "hidden", borderWidth: 1, borderColor: c.glassBorder, zIndex: 10 }}>
+      <BlurView intensity={40} tint={c.scheme === "dark" ? "dark" : "light"} style={{ backgroundColor: c.glass, paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: Math.max(insets.bottom, 12) + 8, gap: space.md }}>
+        <Pressable onPress={onClose} hitSlop={12} style={{ alignSelf: "center", paddingVertical: 6 }} accessibilityLabel="Close the keypad">
+          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.textFaint }} />
+        </Pressable>
+        {row(["1", "2", "3"])}
+        {row(["4", "5", "6"])}
+        {row(["7", "8", "9"])}
+        <Row style={{ justifyContent: "center" }}>{key("0")}</Row>
+        <Button title="Review basket" disabled={reviewDisabled} onPress={onReview} />
+      </BlurView>
+    </View>
   );
 }
 
