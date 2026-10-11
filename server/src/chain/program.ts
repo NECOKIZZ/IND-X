@@ -3,7 +3,8 @@
 // every account explicitly, so the same code serves the API (unsigned
 // transactions for mobile wallets), the keeper and the LiteSVM tests.
 
-import { AnchorProvider, BN, Program, type Idl } from "@anchor-lang/core";
+import { AnchorProvider, Program, type Idl } from "@anchor-lang/core";
+import BN from "bn.js";
 import { getAssociatedTokenAddressSync, ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { Connection, Keypair, PublicKey, SystemProgram, type AccountMeta, type TransactionInstruction } from "@solana/web3.js";
 import { bytesToHex, hexToBytes } from "@indx/core";
@@ -186,7 +187,7 @@ export class Decoder {
   }
   /** The 8-byte account discriminator, for getProgramAccounts filters. */
   discriminator(name: "Round" | "Team" | "Entry" | "Config" | "Registry"): Buffer {
-    return Buffer.from(IDL.accounts.find((a) => a.name === name)!.discriminator);
+    return Buffer.from(idlJson.accounts.find((a) => a.name === name)!.discriminator);
   }
 }
 
@@ -384,16 +385,18 @@ export class Builders {
       .instruction();
   }
 
-  claim(user: PublicKey, roundId: bigint) {
+  /** Pay `owner`'s entry out to them; `signer` may be anyone (the keeper distributes). */
+  claim(owner: PublicKey, roundId: bigint, signer: PublicKey = owner) {
     return this.program.methods
       .claim(new BN(roundId.toString()))
       .accountsStrict({
-        user,
+        signer,
+        owner,
         config: this.pdas.config(),
         round: this.pdas.round(roundId),
-        entry: this.pdas.entry(roundId, user),
+        entry: this.pdas.entry(roundId, owner),
         stakeMint: this.env.stakeMint,
-        userStake: this.stakeAta(user),
+        userStake: this.stakeAta(owner),
         stakeVault: this.stakeVault(),
         tokenProgram: this.env.stakeTokenProgram,
       })

@@ -83,7 +83,8 @@ export interface SettledTeam {
   ret: bigint;
   members: number;
   isWinner: boolean;
-  isDraw: boolean;
+  /** What one backer ticket on this team pays (after the creator fee). */
+  ticketPayout: bigint;
 }
 
 export interface Settlement {
@@ -194,10 +195,27 @@ export function settleRound(
   }
   const r = settleLeague(engineTeams, params, input.seasonPot, bonus);
   const payouts = entries.map(() => input.stake); // refunds by default
+  const ticketPayout = (i: number): bigint => {
+    const t = r.teams[i];
+    if (r.void) return input.stake;
+    if (t.isWinner) {
+      // Same rounding as the engine's in-team split and creator fee.
+      const g = (t.gain * input.stake) / t.teamStake;
+      return input.stake + g - (g * BigInt(params.creatorFeeBps)) / 10_000n;
+    }
+    return r.losingStakes > 0n ? (r.refundedToLosers * input.stake) / r.losingStakes : 0n;
+  };
   const summary = (scored: boolean): SettledTeam[] =>
     teamOrder.map((key, i) => {
       const t = teams.get(key)!;
-      return { teamKey: key, captain: t.captain.wallet, ret: t.ret, members: memberIndex[i].length, isWinner: scored && r.teams[i].isWinner, isDraw: scored && r.teams[i].isDraw };
+      return {
+        teamKey: key,
+        captain: t.captain.wallet,
+        ret: t.ret,
+        members: memberIndex[i].length,
+        isWinner: scored && r.teams[i].isWinner,
+        ticketPayout: ticketPayout(i),
+      };
     });
   if (r.void) return finish(r.void, payouts, 0n, bonus, 0n, summary(false));
   median = r.median;
@@ -239,7 +257,7 @@ export function settleRound(
         status: statuses[e.index],
         payout: pays[e.index].toString(),
       })),
-      teams: teamRows.map((t) => ({ ...t, ret: t.ret.toString() })),
+      teams: teamRows.map((t) => ({ ...t, ret: t.ret.toString(), ticketPayout: t.ticketPayout.toString() })),
       result: {
         void: voidReason,
         median: median === null ? null : median.toString(),

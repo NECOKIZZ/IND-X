@@ -1,20 +1,18 @@
 // Settlement engine (shared with Median Markets / Kickoff Stocks).
 //
 // Weekly (or demo-length) rounds where on-chain stock baskets ("ETFs") are
-// ranked by the % growth of their stocks. Teams above MEDIAN (the middle return)
+// ranked by the % growth of their stocks. Teams above the median (the middle return)
 // win the ticket stakes below it, split by team stake × accuracy. Rules: see
 // docs/RULES.md.
 //
 //   - One ETF = one team. Captain = the creator; others are backers.
-//   - MEDIAN (like the AVERAGE ghost team in FPL head-to-head leagues, but
-//     honestly named): a ghost team whose return is
-//     the median return of the round. Beat MEDIAN and you win, fall below it
-//     and you lose, tie it and you draw: your ticket comes back, no gain, no
-//     loss. In an odd round the middle team always draws; in an even round
-//     nobody draws unless the two middle teams tie.
-//     Equivalently: D = best return − return, k = n//2 + 1, m = k-th smallest
-//     D; win if D < m. If at least half the teams tie at the top, those teams
-//     win (coalition) and nobody draws.
+//   - The median: a ghost team whose return is the median return of the
+//     round. Only ETFs strictly ABOVE the median win; on the median or below
+//     it loses (no draws: everyone has to beat the median). In an odd round
+//     the middle team loses; in an even round the median sits half-way
+//     between the middle two. If nobody is strictly above the median (half
+//     or more tied at the top), the round is void and everyone is refunded.
+//     D = best return − return, k = n//2 + 1, m = k-th smallest D.
 //   - Accuracy a = (1 / (1 + D/m))^gamma (gamma = 6).
 //   - Take = 10% of losing stakes: half platform, half season pot.
 //   - Bonus: sponsor boosts (boost_round) and any ticket yield are added
@@ -72,12 +70,11 @@ export interface LeagueTeam {
   entries: LeagueEntry[];
 }
 
-export type LeagueVoidReason = "TooFewTeams" | "AllReturnsEqual";
+export type LeagueVoidReason = "TooFewTeams" | "AllReturnsEqual" | "NoneAboveMedian";
 
 export interface TeamOutcome {
   d: bigint;          // best return − this return (RET_SCALE)
   isWinner: boolean;
-  isDraw: boolean;    // tied MEDIAN: ticket refunded
   a: bigint;          // accuracy, SCALE fixed point
   teamStake: bigint;
   weight: bigint;     // teamStake × a
@@ -91,7 +88,7 @@ export interface EntryOutcome {
   stake: bigint;
   gain: bigint;       // after the creator fee (captain: includes fees received)
   creatorFee: bigint; // paid by this backer to the captain
-  refund: bigint;     // losers: share of an unmatched pot; draws: the stake
+  refund: bigint;     // losers: share of an unmatched pot
   payout: bigint;
 }
 
@@ -100,9 +97,8 @@ export interface LeagueResult {
   n: number;
   k: number;
   m: bigint;
-  /** MEDIAN's return: the median team return (RET_SCALE, rounded toward zero). */
+  /** The median return: the median team return (RET_SCALE, rounded toward zero). */
   median: bigint;
-  coalitionMode: boolean;
   totalStakes: bigint;
   losingStakes: bigint;
   winningStakes: bigint;
@@ -149,7 +145,6 @@ export function settleLeague(
     k: 0,
     m: 0n,
     median: 0n,
-    coalitionMode: false,
     totalStakes,
     losingStakes: 0n,
     winningStakes: 0n,
@@ -160,7 +155,7 @@ export function settleLeague(
     seasonOut: 0n,
     platformCut: 0n,
     refundedToLosers: 0n,
-    teams: teams.map((_, i) => ({ d: ds[i], isWinner: false, isDraw: false, a: 0n, teamStake: teamStakes[i], weight: 0n, gain: 0n, capped: false })),
+    teams: teams.map((_, i) => ({ d: ds[i], isWinner: false, a: 0n, teamStake: teamStakes[i], weight: 0n, gain: 0n, capped: false })),
     entries: [],
   };
 
@@ -176,29 +171,27 @@ export function settleLeague(
 
   // 2. Gate. min D is always 0 (the best team).
   const sorted = [...ds].sort(cmp);
-  const countAtBest = ds.filter((d) => d === 0n).length;
-  const coalitionMode = countAtBest * 2 >= n;
   const k = Math.floor(n / 2) + 1;
-  const m = sorted[k - 1]; // > 0 whenever not in coalition mode
+  const m = sorted[k - 1]; // > 0 whenever anyone is above the median
 
-  // MEDIAN = the median return. In doubled units, so an even round's
+  // The median return. In doubled units, so an even round's
   // half-way median stays exact: 2·median = best·2 − (D_lo + D_hi).
   const medianTwiceD = n % 2 === 1 ? 2n * m : sorted[k - 2] + m;
   const median = (2n * best - medianTwiceD) / 2n;
 
+  // Strictly above the median wins (return > median ⇔ 2·D < 2·D_median).
   const out = base.teams;
+  if (!ds.some((d) => 2n * d < medianTwiceD)) return voidWith("NoneAboveMedian");
   out.forEach((t, i) => {
-    t.isWinner = coalitionMode ? ds[i] === 0n : ds[i] < m;
-    t.isDraw = !coalitionMode && 2n * ds[i] === medianTwiceD;
+    t.isWinner = 2n * ds[i] < medianTwiceD;
     if (!t.isWinner) return;
-    t.a = coalitionMode ? SCALE : accuracyWeight((ds[i] * SCALE) / m, params.gamma);
+    t.a = accuracyWeight((ds[i] * SCALE) / m, params.gamma);
     t.weight = (t.teamStake * t.a) / SCALE;
   });
 
-  // 3. Pot: take, season share, thin-pot top-up. Draws are neither.
-  const losingStakes = sum(out.filter((t) => !t.isWinner && !t.isDraw).map((t) => t.teamStake));
-  const drawStakes = sum(out.filter((t) => t.isDraw).map((t) => t.teamStake));
-  const winningStakes = totalStakes - losingStakes - drawStakes;
+  // 3. Pot: take, season share, thin-pot top-up.
+  const losingStakes = sum(out.filter((t) => !t.isWinner).map((t) => t.teamStake));
+  const winningStakes = totalStakes - losingStakes;
   const take = (losingStakes * BigInt(params.takeRateBps)) / 10_000n;
   const seasonIn = (take * BigInt(params.seasonShareBps)) / 10_000n;
   let pot = losingStakes - take + bonus;
@@ -245,7 +238,7 @@ export function settleLeague(
     remaining -= giveBack;
     if (remaining > 0n && losingStakes > 0n) {
       for (const e of entries) {
-        if (out[e.team].isWinner || out[e.team].isDraw) continue;
+        if (out[e.team].isWinner) continue;
         e.refund = (remaining * e.stake) / losingStakes;
         refundedToLosers += e.refund;
       }
@@ -272,7 +265,6 @@ export function settleLeague(
   }
 
   for (const e of entries) {
-    if (out[e.team].isDraw) e.refund = e.stake;
     e.payout = out[e.team].isWinner ? e.stake + e.gain : e.refund;
   }
 
@@ -284,7 +276,6 @@ export function settleLeague(
     k,
     m,
     median,
-    coalitionMode,
     losingStakes,
     winningStakes,
     take,

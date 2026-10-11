@@ -370,7 +370,9 @@ pub mod league {
 
     // --- claims --------------------------------------------------------------
 
-    /// Claim the payout (or the refund of a void round). Closes the entry
+    /// Pay out an entry (its payout, or the stake of a void round) to its
+    /// owner. Anyone can call it (the keeper does, so winnings arrive on
+    /// their own); the money only ever goes to the owner. Closes the entry
     /// once any basket has gone back too.
     pub fn claim(ctx: Context<Claim>, round_id: u64) -> Result<()> {
         let _ = round_id;
@@ -397,7 +399,7 @@ pub mod league {
         }
         emit!(Claimed { round_id: r.id, wallet: e.wallet, amount });
         if e.basket_back() {
-            e.close(ctx.accounts.user.to_account_info())?;
+            e.close(ctx.accounts.owner.to_account_info())?;
         }
         Ok(())
     }
@@ -712,18 +714,20 @@ pub struct VoidRound<'info> {
 #[derive(Accounts)]
 #[instruction(round_id: u64)]
 pub struct Claim<'info> {
-    #[account(mut)]
-    pub user: Signer<'info>,
+    pub signer: Signer<'info>,
+    /// CHECK: the entry's wallet: receives the payout and the entry's rent.
+    #[account(mut, address = entry.wallet)]
+    pub owner: UncheckedAccount<'info>,
     #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = stake_mint)]
     pub config: Account<'info, Config>,
     #[account(seeds = [ROUND_SEED, &round_id.to_le_bytes()], bump = round.bump)]
     pub round: Account<'info, Round>,
     #[account(
-        mut, seeds = [ENTRY_SEED, &round_id.to_le_bytes(), user.key().as_ref()], bump = entry.bump,
+        mut, seeds = [ENTRY_SEED, &round_id.to_le_bytes(), owner.key().as_ref()], bump = entry.bump,
     )]
     pub entry: Account<'info, Entry>,
     pub stake_mint: InterfaceAccount<'info, Mint>,
-    #[account(mut, token::mint = stake_mint, token::authority = user, token::token_program = token_program)]
+    #[account(mut, token::mint = stake_mint, token::authority = owner, token::token_program = token_program)]
     pub user_stake: InterfaceAccount<'info, TokenAccount>,
     #[account(mut, associated_token::mint = stake_mint, associated_token::authority = config, associated_token::token_program = token_program)]
     pub stake_vault: InterfaceAccount<'info, TokenAccount>,

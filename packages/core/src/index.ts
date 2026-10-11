@@ -6,3 +6,4 @@ export * from "./basket.js";
 export * from "./snapshot.js";
 export * from "./settlement.js";
 export * from "./api.js";
+export * from "./format.js";

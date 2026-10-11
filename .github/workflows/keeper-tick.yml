@@ -1,0 +1,22 @@
+# Pings the keeper every 5 minutes (free; GitHub may delay scheduled runs a
+# few minutes, which the keeper's sampling windows allow for).
+# Repo secrets: KEEPER_URL (e.g. https://ind-x-api.onrender.com) and
+# KEEPER_TICK_SECRET (the value from Render's environment).
+name: keeper tick
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Tick
+        env:
+          KEEPER_URL: ${{ secrets.KEEPER_URL }}
+          KEEPER_TICK_SECRET: ${{ secrets.KEEPER_TICK_SECRET }}
+        run: |
+          if [ -z "$KEEPER_URL" ]; then echo "KEEPER_URL not set; skipping"; exit 0; fi
+          # A sleeping free instance can take ~60s to wake.
+          curl -sS --fail-with-body --max-time 150 -X POST "$KEEPER_URL/v1/keeper/tick" -H "Authorization: Bearer $KEEPER_TICK_SECRET"
