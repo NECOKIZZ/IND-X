@@ -2,7 +2,7 @@
 # A local Solana validator with the league program preloaded, set up with
 # test tokens. Then run the server against it:
 #   LEAGUE_CLUSTER=localnet KEEPER_KEYPAIR=~/.config/solana/id.json \
-#   FAUCET_KEYPAIR=~/.config/solana/id.json LEAGUE_RUN_KEEPER=1 pnpm server
+#   FAUCET_KEYPAIR=~/.config/solana/id.json LEAGUE_RUN_KEEPER=1 pnpm start
 set -euo pipefail
 cd "$(dirname "$0")/.."
 PROGRAM_ID=$(solana-keygen pubkey target/deploy/league-keypair.json)

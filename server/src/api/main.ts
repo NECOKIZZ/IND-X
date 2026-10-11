@@ -1,8 +1,8 @@
 // API server entry point. With LEAGUE_RUN_KEEPER=1 (the default on the lite
 // cluster) the keeper runs in the same process.
 //
-//   pnpm server                                  # uses .env
-//   LEAGUE_CLUSTER=lite LEAGUE_SCHEDULE=demo:10:20 LEAGUE_PRICE_SOURCE=demo pnpm server
+//   pnpm start                                  # uses .env
+//   LEAGUE_CLUSTER=lite LEAGUE_SCHEDULE=demo:10:20 LEAGUE_PRICE_SOURCE=demo pnpm start
 
 import { serve } from "@hono/node-server";
 import { league } from "../league.js";
