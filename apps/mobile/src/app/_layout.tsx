@@ -10,6 +10,7 @@ import { ToastProvider } from "@/components/Toast";
 import { WalletProvider, useWallet } from "@/wallet/WalletProvider";
 import { useNotifications } from "@/lib/notifications";
 import { useAppFonts } from "@/theme/fonts";
+import { Splash, useSplash } from "@/components/Splash";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -34,6 +35,7 @@ function App() {
   const c = useColors();
   const nav = scheme === "dark" ? DarkTheme : DefaultTheme;
   const fontsReady = useAppFonts();
+  const splash = useSplash();
   useEffect(() => {
     if (fontsReady) SplashScreen.hideAsync().catch(() => {});
   }, [fontsReady]);
@@ -48,6 +50,11 @@ function App() {
                 <StatusBar style={scheme === "dark" ? "light" : "dark"} />
                 <Stack screenOptions={{ headerShadowVisible: false, headerBackButtonDisplayMode: "minimal", contentStyle: { backgroundColor: c.bg } }}>
                   <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen name="welcome" options={{ headerShown: false, gestureEnabled: false, animation: "fade" }} />
+                  <Stack.Screen name="signin" options={{ presentation: "formSheet", sheetAllowedDetents: [0.5], sheetGrabberVisible: true, headerShown: false }} />
+                  <Stack.Screen name="send" options={{ presentation: "formSheet", sheetAllowedDetents: [0.92], sheetGrabberVisible: true, headerShown: false }} />
+                  <Stack.Screen name="receive" options={{ presentation: "formSheet", sheetAllowedDetents: [0.6], sheetGrabberVisible: true, headerShown: false }} />
+                  <Stack.Screen name="tag" options={{ presentation: "formSheet", sheetAllowedDetents: [0.6], sheetGrabberVisible: true, headerShown: false }} />
                   <Stack.Screen name="etf/[round]/[key]" options={{ headerShown: false }} />
                   <Stack.Screen name="round/[id]" options={{ headerShown: false }} />
                   <Stack.Screen name="rules" options={{ headerShown: false, presentation: "modal" }} />
@@ -60,6 +67,7 @@ function App() {
                     options={{ title: "Buy", presentation: "formSheet", sheetAllowedDetents: [0.6], sheetGrabberVisible: true, headerShown: false }}
                   />
                 </Stack>
+                {splash.show ? <Splash onDone={splash.done} /> : null}
               </Notifications>
             </ToastProvider>
           </ThemeProvider>

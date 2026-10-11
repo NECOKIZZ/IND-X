@@ -29,6 +29,8 @@ interface WalletState {
   disconnect(): Promise<void>;
   /** Sign and relay a plan; returns the signatures. */
   signAndSend(plan: TxPlan): Promise<string[]>;
+  /** Sign without sending (proofs like claiming a @tag). */
+  signOnly(txs: string[]): Promise<string[]>;
 }
 
 const Ctx = createContext<WalletState | null>(null);
@@ -111,7 +113,18 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     [adapter, qc],
   );
 
-  const value = useMemo(() => ({ address, kind: adapter?.kind ?? null, ready, options, connect, disconnect, signAndSend }), [address, adapter, ready, options, connect, disconnect, signAndSend]);
+  const signOnly = useCallback(
+    async (txs: string[]) => {
+      if (!adapter) throw new Error("Connect a wallet first");
+      return adapter.signTransactions(txs);
+    },
+    [adapter],
+  );
+
+  const value = useMemo(
+    () => ({ address, kind: adapter?.kind ?? null, ready, options, connect, disconnect, signAndSend, signOnly }),
+    [address, adapter, ready, options, connect, disconnect, signAndSend, signOnly],
+  );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

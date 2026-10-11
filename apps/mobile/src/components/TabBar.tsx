@@ -1,17 +1,17 @@
 // The floating glass tab bar: a frosted pill hovering above the content,
-// the active tab marked by a sage capsule.
+// the active tab marked by a capsule that slides between tabs.
 
 import { Platform, Pressable, View } from "react-native";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { ComponentProps } from "react";
-import type { Tabs } from "expo-router";
+import type { NavigationHelpers, ParamListBase, TabNavigationState } from "expo-router/react-navigation";
 import { font, radius, useColors } from "@/theme";
 import { tap } from "@/lib/haptics";
+import { useTabBarHidden } from "@/lib/chrome";
 import { Icon, type IconName } from "./Icon";
 import { Text } from "./ui";
 
-type BottomTabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>["tabBar"]>>[0];
+type BottomTabBarProps = { state: TabNavigationState<ParamListBase>; navigation: NavigationHelpers<ParamListBase, any> };
 
 const TABS: Record<string, { label: string; icon: IconName }> = {
   "(home)": { label: "League", icon: "league" },
@@ -23,6 +23,7 @@ const TABS: Record<string, { label: string; icon: IconName }> = {
 export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
   const c = useColors();
   const insets = useSafeAreaInsets();
+  if (useTabBarHidden()) return null;
   return (
     <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: Math.max(insets.bottom, 12) + 4, alignItems: "center" }}>
       <View
@@ -47,7 +48,7 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
                 accessibilityLabel={t.label}
                 onPress={() => {
                   tap();
-                  const e = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
+                  const e = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true }) as { defaultPrevented?: boolean };
                   if (!focused && !e.defaultPrevented) navigation.navigate(route.name);
                 }}
                 style={{

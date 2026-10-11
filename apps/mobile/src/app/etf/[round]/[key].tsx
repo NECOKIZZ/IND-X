@@ -11,6 +11,7 @@ import { bpsToPct, pct, short, usd } from "@/lib/format";
 import { useWallet } from "@/wallet/WalletProvider";
 import { AssetLogo } from "@/components/AssetLogo";
 import { ReturnChart } from "@/components/Chart";
+import { Avatar } from "@/components/Avatar";
 import { Countdown } from "@/components/Countdown";
 import { Glow } from "@/components/Glow";
 import { BackBar } from "@/components/Header";
@@ -72,7 +73,7 @@ export default function EtfScreen() {
                 {e.roundPhase === "settled" ? "." : " if the round ended now."}
               </Text>
             ) : null}
-            <ReturnChart points={e.chart} medianPct={e.medianPct} height={160} />
+            <ReturnChart points={e.chart} medianPct={e.medianPct} height={160} from={e.entryClose} to={e.end} />
           </View>
         </View>
 
@@ -102,13 +103,16 @@ export default function EtfScreen() {
           ))}
         </Card>
 
-        <SectionTitle title={`Team · ${e.memberList.length}`} />
+        <SectionTitle title={`Backers · ${e.members} of ${e.maxBackers}`} />
         <Card style={{ paddingVertical: space.xs }}>
           {e.memberList.map((m, i) => (
             <View key={m.wallet}>
               {i ? <Divider /> : null}
               <Row style={{ justifyContent: "space-between", paddingVertical: space.md }}>
-                <Text v="mono">{m.wallet === address ? "You" : short(m.wallet, 6)}</Text>
+                <Row gap={space.md}>
+                  <Avatar wallet={m.wallet} size={30} />
+                  <Text v="mono">{m.wallet === address ? "You" : short(m.wallet, 6)}</Text>
+                </Row>
                 <Text v="small" color={c.textMuted}>
                   {m.isCaptain ? "Creator" : m.isCreator ? "Co-creator" : "Backer"}
                 </Text>

@@ -25,6 +25,7 @@ import { DEFAULT_LEAGUE_PARAMS, DEFAULT_RULES, MAX_CREATOR_BUY_FEE_BPS, recomput
 import type { League } from "../league.js";
 import { publicRpcUrl } from "../config.js";
 import { PRICE_SOURCE_LABEL, priceSourceFromEnv } from "../prices.js";
+import { normTag, planTransfer, poolView, resolveTag, tagChallenge, tagClaim } from "./social.js";
 import { activity, assetViews, currentRoundId, etfView, HttpError, leaderboard, roundSummaries, roundView, walletView } from "./views.js";
 import { faucet, planBack, planBoost, planBuy, planClaim, planCreate, quoteBasket, relay } from "./tx.js";
 import { Keeper, keeperOptionsFromEnv } from "../keeper/keeper.js";
@@ -106,6 +107,12 @@ export function createApp(L: League) {
 
   app.get("/v1/wallets/:wallet", async (c) => json(c, await walletView(L, c.req.param("wallet"))));
   app.get("/v1/leaderboard", async (c) => json(c, await leaderboard(L)));
+  app.get("/v1/pool", async (c) => json(c, await poolView(L)));
+  app.get("/v1/tags/:tag", async (c) => {
+    const wallet = await resolveTag(L, c.req.param("tag"));
+    if (!wallet) throw new HttpError(404, "no one has that tag");
+    return json(c, { tag: normTag(c.req.param("tag")), wallet });
+  });
 
   const body = async <T>(c: Context): Promise<T> => {
     try {
@@ -133,6 +140,9 @@ export function createApp(L: League) {
     const b = await body<{ tx: string }>(c);
     return json(c, { signature: await relay(L, b.tx) });
   });
+  app.post("/v1/tx/transfer", async (c) => json(c, await planTransfer(L, await body(c))));
+  app.post("/v1/tags/challenge", async (c) => json(c, await tagChallenge(L, await body(c))));
+  app.post("/v1/tags/claim", async (c) => json(c, await tagClaim(L, await body(c))));
   app.post("/v1/faucet", async (c) => json(c, await faucet(L, (await body<{ wallet: string }>(c)).wallet)));
 
   app.post("/v1/push", async (c) => {

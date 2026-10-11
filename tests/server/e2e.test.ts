@@ -250,6 +250,31 @@ describe("backend end to end", () => {
     expect(after.assets.find((a) => a.symbol === "AAPLx")!.raw).not.toBe("0");
   });
 
+  it("claims a @tag and sends USDC to it", async () => {
+    const a = Keypair.generate();
+    const b = Keypair.generate();
+    for (const k of [a, b]) await api("/v1/faucet", { body: { wallet: k.publicKey.toBase58() } });
+    // b claims @bob by signing (not sending) the challenge.
+    const ch = await api<{ transaction: string }>("/v1/tags/challenge", { body: { wallet: b.publicKey.toBase58(), tag: "@Bob" } });
+    const tx = VersionedTransaction.deserialize(Buffer.from(ch.transaction, "base64"));
+    tx.sign([b]);
+    expect(await api("/v1/tags/claim", { body: { wallet: b.publicKey.toBase58(), tag: "bob", signed: Buffer.from(tx.serialize()).toString("base64") } })).toEqual({ tag: "bob" });
+    // Someone else can't take it, or claim it with b's signature for a.
+    await expect(api("/v1/tags/challenge", { body: { wallet: a.publicKey.toBase58(), tag: "bob" } })).rejects.toThrow("409");
+    await expect(api("/v1/tags/claim", { body: { wallet: a.publicKey.toBase58(), tag: "bob", signed: Buffer.from(tx.serialize()).toString("base64") } })).rejects.toThrow();
+    expect((await api<{ wallet: string }>("/v1/tags/bob")).wallet).toBe(b.publicKey.toBase58());
+    expect((await api<WalletView>(`/v1/wallets/${b.publicKey.toBase58()}`)).tag).toBe("bob");
+    // a sends 12.5 USDC to @bob.
+    const cfg = await api<{ stakeMint: string }>("/v1/config");
+    const before = (await api<WalletView>(`/v1/wallets/${b.publicKey.toBase58()}`)).usdc.uiAmount;
+    await signAndSend(await api<TxPlan>("/v1/tx/transfer", { body: { wallet: a.publicKey.toBase58(), to: "@bob", mint: cfg.stakeMint, amount: 12.5 } }), a);
+    expect((await api<WalletView>(`/v1/wallets/${b.publicKey.toBase58()}`)).usdc.uiAmount).toBeCloseTo(before + 12.5, 6);
+    await expect(api("/v1/tx/transfer", { body: { wallet: a.publicKey.toBase58(), to: "@nobody", mint: cfg.stakeMint, amount: 1 } })).rejects.toThrow("404");
+    await expect(api("/v1/tx/transfer", { body: { wallet: a.publicKey.toBase58(), to: "@bob", mint: cfg.stakeMint, amount: 1e6 } })).rejects.toThrow("not enough");
+    const pool = await api<{ seasonUsd: number }>("/v1/pool");
+    expect(pool.seasonUsd).toBeGreaterThanOrEqual(0);
+  });
+
   it("keeper ticks over HTTP need the secret", async () => {
     process.env.KEEPER_TICK_SECRET = "s3cret";
     const no = await app.request("/v1/keeper/tick", { method: "POST" });

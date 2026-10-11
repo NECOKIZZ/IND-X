@@ -457,6 +457,7 @@ export async function walletView(L: League, walletStr: string): Promise<WalletVi
       wins: done.filter((e) => e.state === "won").length,
       netUsd: done.reduce((s, e) => s + (e.payoutUsd ?? 0) - e.stakeUsd, 0),
     },
+    tag: ((await L.store.kv.get(`tagof/${walletStr}`)) as string | null) ?? null,
   };
 }
 
@@ -512,7 +513,9 @@ export async function leaderboard(L: League, limit = 50): Promise<LeaderRow[]> {
       rows.set(e.wallet, r);
     }
   }
-  return [...rows.values()].sort((a, b) => b.netUsd - a.netUsd || b.wins - a.wins).slice(0, limit);
+  const top = [...rows.values()].sort((a, b) => b.netUsd - a.netUsd || b.wins - a.wins).slice(0, limit);
+  await Promise.all(top.map(async (r) => (r.tag = (await L.store.kv.get(`tagof/${r.wallet}`)) as string | null)));
+  return top;
 }
 
 export async function activity(L: League, roundId: bigint, limit = 30): Promise<ActivityItem[]> {
