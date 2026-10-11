@@ -1,0 +1,96 @@
+{
+  "cluster": "devnet",
+  "programId": "8d88mxfH12NXWg9RfvkpFXztGBAkYMsbNxAXyfvwT3uA",
+  "stakeMint": "B35duKa8fME7q2h6Zer8Rs8i5awqBmm3hKShQqFJbJis",
+  "stakeDecimals": 6,
+  "stakeTokenProgram": "token",
+  "faucet": true,
+  "assets": [
+    {
+      "symbol": "AAPLx",
+      "mint": "4zu48gbGYY3AL7vtmoPYYHo6btBm5ZZKCsq5ogJoTosG",
+      "priceMint": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp"
+    },
+    {
+      "symbol": "MSFTx",
+      "mint": "HZufe1xFXLd6wnMKAEewwXWCcC2Ai3ssRobtdsMuSEdi",
+      "priceMint": "XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX"
+    },
+    {
+      "symbol": "NVDAx",
+      "mint": "9mjLGVD4pTaRVRFYr9oc3rcd8HHVaxrEY8AgZNvkbyku",
+      "priceMint": "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh"
+    },
+    {
+      "symbol": "GOOGLx",
+      "mint": "HEDawyQDhqVSeBPKEnGLTjyKgnkPsE843c48Lhv8HmHK",
+      "priceMint": "XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN"
+    },
+    {
+      "symbol": "AMZNx",
+      "mint": "3Wvu1D3rDjzqzFXUuEvPSpYv3JHBceK7ygCeRqUNhfpn",
+      "priceMint": "Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg"
+    },
+    {
+      "symbol": "METAx",
+      "mint": "F1xMvmHx3U1DTZjFzTwivUxTWxeEJSpZwCCrNseQRsGh",
+      "priceMint": "Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu"
+    },
+    {
+      "symbol": "TSLAx",
+      "mint": "Up5KWPcna7zXKPY3BKaM9D7K2wBxVgNefZeR7GNjjDt",
+      "priceMint": "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB"
+    },
+    {
+      "symbol": "NFLXx",
+      "mint": "2W5yHChFgrTchhvY29v28rBzBD2zXFMFHEDu132jX6pt",
+      "priceMint": "XsEH7wWfJJu2ZT3UCFeVfALnVA6CP5ur7Ee11KmzVpL"
+    },
+    {
+      "symbol": "COINx",
+      "mint": "FwYtbuMxZgoJe1UWQPFqQqPKni5exzjEfBM6GRJiozWC",
+      "priceMint": "Xs7ZdzSHLU9ftNJsii5fCeJhoRWSC32SQGzGQtePxNu"
+    },
+    {
+      "symbol": "PLTRx",
+      "mint": "AqisyVtZfq75Z8vc48nQErspGVbWWap4Qga6M1Xq6BUb",
+      "priceMint": "XsoBhf2ufR8fTyNSjqfU71DYGaE6Z3SUGAidpzriAA4"
+    },
+    {
+      "symbol": "SPYx",
+      "mint": "GR9p1FrcRqPSU3j1DfVCqPWLcsJ4SDLFcYRAhEgCnKzn",
+      "priceMint": "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W"
+    },
+    {
+      "symbol": "QQQx",
+      "mint": "7CQDLcrk5yZRmMaRpvwzJzgWeDqMUFjJNj3qZxtXRH66",
+      "priceMint": "Xs8S1uUs1zvS2p7iwtsG3b6fkhpvmwz4GYU3gWAmWHZ"
+    },
+    {
+      "symbol": "GLDx",
+      "mint": "FBcTd4uGxRr9Yzfs6LUSeatGdwD9zsMaPr7iRCr7bR3e",
+      "priceMint": "Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re"
+    },
+    {
+      "symbol": "cbBTC",
+      "mint": "8dxoRgRk3qk72rrvDJwFU7EdEhvvzx7mPKB9NZDd8C5D",
+      "priceMint": "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij"
+    },
+    {
+      "symbol": "ETH",
+      "mint": "G5UxwX1hEkNkWqDb1KeJWoTD1LdqjWCLQAuyZn13ej18",
+      "priceMint": "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs"
+    },
+    {
+      "symbol": "SOL",
+      "mint": "ETrXwmAkxTNThGDYGRFhKYLpHFbwJahGSfyDyzjsrcUM",
+      "priceMint": "So11111111111111111111111111111111111111112"
+    },
+    {
+      "symbol": "BNB",
+      "mint": "E7pnME8eyX4yR4xwxzLjgVXyCNEiMpoLCzTKgH9XCRdC",
+      "priceMint": "9gP2kCy3wA1ctvYWQk75guqXuHfrEomqydHLtcTCqiLa"
+    }
+  ],
+  "lookupTable": "48MfcZ8WgZedQfBbMtzak5KGEoHSk3geNGgE5B5pNiBQ"
+}

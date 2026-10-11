@@ -59,3 +59,4 @@ if (existsSync(file)) log(`overwriting ${file}`);
 writeFileSync(file, JSON.stringify(d, null, 2) + "\n");
 log(`wrote ${file}`);
 if (d.faucet) log("faucet: set FAUCET_KEYPAIR to the admin keypair on the server to mint test tokens");
+process.exit(0); // RPC connections otherwise keep the process alive
