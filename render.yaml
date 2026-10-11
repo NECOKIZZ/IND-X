@@ -9,7 +9,7 @@ services:
     runtime: node
     plan: free
     buildCommand: corepack enable && pnpm install --frozen-lockfile
-    startCommand: pnpm server
+    startCommand: pnpm start
     healthCheckPath: /healthz
     envVars:
       - key: NODE_VERSION

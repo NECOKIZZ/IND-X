@@ -46,7 +46,7 @@ FAUCET_KEYPAIR='[...json array...]' \
 LEAGUE_RUN_KEEPER=1 \
 LEAGUE_SCHEDULE=weekly \
 DATABASE_URL=postgres://... \
-pnpm server
+pnpm start
 ```
 
 Use Postgres (`DATABASE_URL`) in production: price samples and published inputs must survive redeploys. For short demo rounds, use `LEAGUE_SCHEDULE=demo:30:60`.

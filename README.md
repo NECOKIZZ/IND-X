@@ -43,7 +43,7 @@ cd apps/mobile && npx expo start   # the app; set EXPO_PUBLIC_API_URL to your ma
 ```
 
 **On a local validator**: `pnpm validator` (starts it with the program and sets up test tokens), then
-`LEAGUE_CLUSTER=localnet KEEPER_KEYPAIR=~/.config/solana/id.json FAUCET_KEYPAIR=~/.config/solana/id.json LEAGUE_RUN_KEEPER=1 pnpm server`.
+`LEAGUE_CLUSTER=localnet KEEPER_KEYPAIR=~/.config/solana/id.json FAUCET_KEYPAIR=~/.config/solana/id.json LEAGUE_RUN_KEEPER=1 pnpm start`.
 
 **Devnet / mainnet**: [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
