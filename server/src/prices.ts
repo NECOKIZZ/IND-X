@@ -118,7 +118,7 @@ export async function samplePyth(assets: DeployedAsset[], multipliers: Map<strin
 /** Reference prices for the demo source (USD per token). */
 const DEMO_BASE: Record<string, number> = {
   AAPL: 337, MSFT: 535, NVDA: 229, GOOGL: 351, AMZN: 261, META: 720, TSLA: 383, NFLX: 71, AVGO: 361, MU: 1028, PLTR: 207,
-  COIN: 181, HOOD: 108, CRCL: 85, MSTR: 155, MCD: 235, "BRK.B": 515, GME: 26, SPY: 778, QQQ: 751, GLD: 384, BTC: 82000, ETH: 2480,
+  COIN: 181, HOOD: 108, CRCL: 85, MSTR: 155, MCD: 235, "BRK.B": 515, GME: 26, SPY: 778, QQQ: 751, GLD: 384, BTC: 82000, ETH: 2480, SOL: 110, BNB: 748,
 };
 
 /** Each ticker drifts on its own slow wave, so standings move over minutes. */

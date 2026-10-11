@@ -37,7 +37,7 @@ Not enforced on-chain (the keeper refunds an entry that breaks them): the $10 mi
 
 ## Settlement (`packages/core`)
 
-`engine.ts` is the shared engine from the earlier versions: D = best return − return, k = n//2 + 1, m = the k-th smallest D, win if D < m, a draw on MEDIAN, accuracy (1/(1+D/m))^6, a 10% take (half platform, half season pot), thin-pot top-up, a 100× gain cap, the creator's 10% of backers' gains.
+`engine.ts` is the shared engine from the earlier versions: D = best return − return, k = n//2 + 1, m = the k-th smallest D, the median at D = m. Only teams strictly above the median win (2·D < 2·D_median): no draws, and the round is void (`NoneAboveMedian`) if nobody is above. Then accuracy (1/(1+D/m))^6, a 10% take (half platform, half season pot), thin-pot top-up, a 100× gain cap, the creator's 10% of backers' gains.
 
 `settlement.ts` turns on-chain entries plus price snapshots into one payout per entry, along with the **published inputs** (prices, baskets, statuses, payouts). Their sha256 goes on-chain. `recomputeFromInputs` rebuilds the payouts from the published JSON, and `GET /v1/rounds/:id/verify` does exactly that.
 

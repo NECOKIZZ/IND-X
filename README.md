@@ -2,9 +2,9 @@
 
 A weekly stock league on **Solana**, as a mobile app. The Solana and mobile version of [Median Markets](https://github.com/NECOKIZZ/ETF) (BNB Chain) and [Kickoff Stocks](https://github.com/NECOKIZZ/kickoffstocks) (Robinhood Chain).
 
-- **Creators** build an "ETF": they lock a basket of 3–10 tokenized stocks ([xStocks](https://xstocks.com): AAPLx, NVDAx, SPYx…, with an optional crypto slice up to 20%) worth at least $10, plus a **$5 USDC ticket**. The locked basket *is* the ETF. Its score is the real return of exactly what was locked, dividends included (xStocks pay them through their on-chain multiplier).
+- **Creators** build an "ETF": they lock a basket of 3–10 tokenized stocks ([xStocks](https://xstocks.com): AAPLx, NVDAx, SPYx…, with an optional crypto slice of BTC, ETH, SOL and BNB up to 20%) worth at least $10, plus a **$5 USDC ticket**. The locked basket *is* the ETF. Its score is the real return of exactly what was locked, dividends included (xStocks pay them through their on-chain multiplier).
 - **Backers** put a $5 ticket on someone's ETF, or **buy the ETF** in one tap (Jupiter swaps, with the creator earning their buy fee).
-- **MEDIAN** is a ghost team at the round's median return. Above MEDIAN wins a share of the tickets below it, split by tickets × accuracy. On MEDIAN is a draw (ticket back); below loses the ticket. Peer to peer: the platform never plays.
+- **The median** is a ghost team at the round's median return. Only ETFs strictly above the median win; they share every other ticket, split by tickets × accuracy (pari-mutuel: winners are paid only by losers, the platform never plays). **No draws**: landing exactly on the median loses too.
 - **Weekly rounds run by themselves**: entries close Monday 9:30am New York (the open), the round ends Friday 4pm (the close). The keeper settles, **pays everyone automatically** (winnings and baskets arrive in your wallet with no claim step), and opens next week's round.
 
 > "ETF" here means an on-chain basket of tokenized stocks, not a regulated fund. Capital is at risk. xStocks are not available to US persons and in some other regions.
@@ -14,7 +14,7 @@ A weekly stock league on **Solana**, as a mobile app. The Solana and mobile vers
 | Piece | Where | State |
 |---|---|---|
 | League program (Anchor 1.2) | `programs/league` | ✅ 10 program tests on LiteSVM |
-| Settlement engine (MEDIAN), rules, team keys | `packages/core` | ✅ shared by server and app |
+| Settlement engine (median, no draws), rules, team keys | `packages/core` | ✅ shared by server and app |
 | Keeper (rounds, prices, settlement, auto-payout) | `server/src/keeper` | ✅ end to end on LiteSVM and a local validator |
 | Prices: Jupiter / Pyth × xStocks multiplier | `server/src/prices.ts` | ✅ live-checked |
 | API for the app (+ unsigned transactions, relay, push) | `server/src/api` | ✅ |
@@ -49,7 +49,7 @@ cd apps/mobile && npx expo start   # the app; set EXPO_PUBLIC_API_URL to your ma
 
 ## The app
 
-Expo Router, native tabs (League · Build · Portfolio · Results), live standings around a MEDIAN line, a 3-step builder, one-tap back/buy, results and leaderboard, push notifications (round open, live, your result), pull-to-refresh, haptics, light and dark mode.
+Expo Router, native tabs (League · Build · Portfolio · Results), live standings around the median line, a 3-step builder, one-tap back/buy, results and leaderboard, push notifications (round open, live, your result), pull-to-refresh, haptics, light and dark mode.
 
 Wallets: **Mobile Wallet Adapter** on Android (Phantom, Solflare, Backpack, Seed Vault), **Phantom** deeplinks on iOS and Android, and a **test wallet** kept on the device for devnet. Brand (name, colors, fonts, logo) is a placeholder in `apps/mobile/src/theme/`.
 

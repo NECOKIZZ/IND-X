@@ -18,7 +18,7 @@ export function ReturnChart({ points, medianPct, height = 180 }: { points: Chart
       </View>
     );
   }
-  const ys = points.flatMap((p) => [p.retPct, p.benchPct ?? p.retPct]).concat(medianPct ?? 0, 0);
+  const ys = points.flatMap((p) => [p.retPct, p.benchPct ?? p.retPct, p.medianPct ?? p.retPct]).concat(0);
   const min = Math.min(...ys);
   const max = Math.max(...ys);
   const span = Math.max(max - min, 0.2);
@@ -32,14 +32,15 @@ export function ReturnChart({ points, medianPct, height = 180 }: { points: Chart
       .map((p, i) => `${i ? "L" : "M"}${x(p.t).toFixed(1)},${y(get(p)!).toFixed(1)}`)
       .join(" ");
   const last = points[points.length - 1].retPct;
-  const lineColor = last >= (medianPct ?? 0) ? c.up : c.down;
+  const lastMedian = points[points.length - 1].medianPct ?? medianPct;
+  const lineColor = lastMedian === null || last > lastMedian ? c.up : c.down;
   return (
     <View>
       <View style={{ height }} onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)}>
         {w > 0 ? (
           <Svg width={w} height={height}>
             <Line x1={0} x2={w} y1={y(0)} y2={y(0)} stroke={c.border} strokeWidth={1} />
-            {medianPct !== null ? <Line x1={0} x2={w} y1={y(medianPct)} y2={y(medianPct)} stroke={c.line} strokeWidth={1} strokeDasharray="4 4" opacity={0.6} /> : null}
+            {points.some((p) => p.medianPct !== null) ? <Path d={path((p) => p.medianPct)} stroke={c.line} strokeWidth={1.2} strokeDasharray="4 4" fill="none" opacity={0.7} /> : null}
             <Path d={path((p) => p.benchPct)} stroke={c.textMuted} strokeWidth={1.5} fill="none" opacity={0.6} />
             <Path d={path((p) => p.retPct)} stroke={lineColor} strokeWidth={2} fill="none" strokeLinejoin="round" strokeLinecap="round" />
           </Svg>
@@ -47,7 +48,7 @@ export function ReturnChart({ points, medianPct, height = 180 }: { points: Chart
       </View>
       <Row gap={space.lg} style={{ marginTop: space.sm }}>
         <Legend color={lineColor} label={`This ETF ${pct(last)}`} />
-        {medianPct !== null ? <Legend color={c.line} label={`${brand.Line} ${pct(medianPct)}`} dashed /> : null}
+        {lastMedian !== null ? <Legend color={c.line} label={`${brand.Line} ${pct(lastMedian)}`} dashed /> : null}
         <Legend color={c.textMuted} label="S&P 500" />
       </Row>
     </View>

@@ -1,5 +1,5 @@
 // Ind-X brand copy. The round's middle line is the median: ETFs above it
-// win, on it draw, below it lose.
+// win; on it or below it lose (no draws).
 
 export const brand = {
   name: "Ind-X",

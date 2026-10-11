@@ -14,6 +14,7 @@ import { Glow } from "@/components/Glow";
 import { TopBar } from "@/components/Header";
 import { Icon } from "@/components/Icon";
 import { Standings } from "@/components/Standings";
+import { Sparkline } from "@/components/Sparkline";
 
 const PHASE: Record<RoundView["phase"], string> = { open: "Entries open", live: "Live", settling: "Settling", settled: "Settled", voided: "Voided" };
 
@@ -70,11 +71,19 @@ function Hero({ r }: { r: RoundView }) {
           )}
         </View>
 
+        {r.medianSeries.length >= 2 ? (
+          <View style={{ gap: 6 }}>
+            <Label>{brand.Line} over the round</Label>
+            <Sparkline values={r.medianSeries.map((p) => p.pct)} width={300} height={44} color={c.text} baseline={c.border} />
+          </View>
+        ) : null}
+
         <Row style={{ justifyContent: "space-between" }}>
           <Stat label="Pot" value={usd(r.potUsd, 0)} />
           <Stat label="Players" value={String(r.players)} />
           <Stat label="ETFs" value={String(r.etfCount)} />
-          <Stat label={brand.Line} value={pct(r.medianPct)} align="right" />
+          {/* Before the round starts there's no real median yet: show the 24h preview as such. */}
+          <Stat label={r.pricing === "preview" ? `${brand.Line} · 24h` : brand.Line} value={pct(r.medianPct)} align="right" />
         </Row>
       </View>
     </View>
@@ -109,7 +118,7 @@ function YourEntry({ r }: { r: RoundView }) {
       </Row>
     );
   }
-  const tone = e.standing === "above" ? c.up : e.standing === "below" ? c.down : c.line;
+  const tone = e.standing === "above" ? c.up : c.down;
   return (
     <Card onPress={() => router.push(`/etf/${r.id}/${e.etfKey}`)} style={{ marginTop: space.md, gap: space.sm }}>
       <Row style={{ justifyContent: "space-between" }}>
@@ -128,7 +137,7 @@ function YourEntry({ r }: { r: RoundView }) {
         <Row gap={6}>
           <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: tone }} />
           <Text v="small" color={c.textMuted}>
-            {e.standing === "above" ? `Above ${brand.line}` : e.standing === "below" ? `Below ${brand.line}` : `On ${brand.line}`}
+            {e.standing === "above" ? `Above ${brand.line}` : `Not above ${brand.line}`}
             {e.payoutUsd !== null ? ` · ${r.phase === "settled" ? "paid" : "would pay"} ${usd(e.payoutUsd)}` : ""}
           </Text>
         </Row>

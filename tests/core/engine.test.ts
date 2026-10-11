@@ -55,55 +55,53 @@ describe("settleLeague — gate", () => {
     expect(r.k).toBe(3);
     checkInvariants(r);
   });
-  it("odd round: the middle team draws with MEDIAN and gets its ticket back", () => {
+  it("odd round: the middle team is ON the median and loses (no draws)", () => {
     const r = settleLeague([team(5), team(4), team(3), team(2), team(0)]);
     expect(r.teams.map((t) => t.isWinner)).toEqual([true, true, false, false, false]);
-    expect(r.teams.map((t) => t.isDraw)).toEqual([false, false, true, false, false]);
     expect(r.median).toBe(pct(3));
-    expect(payoutsOf(r, 2)).toEqual([STAKE]);
-    expect(r.losingStakes).toBe(2n * STAKE);
+    expect(payoutsOf(r, 2)).toEqual([0n]);
+    expect(r.losingStakes).toBe(3n * STAKE);
     expect(r.winningStakes).toBe(2n * STAKE);
     checkInvariants(r);
   });
-  it("teams tied with MEDIAN all draw", () => {
+  it("teams tied with the median all lose", () => {
     const tie = settleLeague([team(5), team(4), team(4), team(1), team(0)]);
-    // MEDIAN = 4%: both 4% teams draw.
+    // Median = 4%: both 4% teams are on it, so only the 5% team wins.
     expect(tie.teams.map((t) => t.isWinner)).toEqual([true, false, false, false, false]);
-    expect(tie.teams.map((t) => t.isDraw)).toEqual([false, true, true, false, false]);
-    expect([...payoutsOf(tie, 1), ...payoutsOf(tie, 2)]).toEqual([STAKE, STAKE]);
+    expect([...payoutsOf(tie, 1), ...payoutsOf(tie, 2)]).toEqual([0n, 0n]);
     checkInvariants(tie);
   });
-  it("even round: MEDIAN sits between the middle two, nobody draws", () => {
+  it("even round: the median sits between the middle two; the top half wins", () => {
     const r = settleLeague([team(3), team(1), team(-1), team(2)]);
-    expect(r.teams.some((t) => t.isDraw)).toBe(false);
+    expect(r.teams.map((t) => t.isWinner)).toEqual([true, false, false, true]);
     expect(r.median).toBe(pct(1.5));
     checkInvariants(r);
   });
-  it("even round: the middle two tied both draw", () => {
+  it("even round: the middle two tied are on the median and both lose", () => {
     const r = settleLeague([team(3), team(1), team(1), team(-1)]);
     expect(r.teams.map((t) => t.isWinner)).toEqual([true, false, false, false]);
-    expect(r.teams.map((t) => t.isDraw)).toEqual([false, true, true, false]);
     checkInvariants(r);
   });
-  it("a draw changes nothing for winners compared with losing the same stake elsewhere", () => {
-    // Same winners either way; the drawn ticket simply leaves the pot.
-    const odd = settleLeague([team(5), team(4), team(3), team(2), team(0)]);
-    expect(odd.pot).toBe(odd.losingStakes - odd.take + odd.seasonOut);
-    checkInvariants(odd);
+  it("nobody strictly above the median voids the round and refunds everyone", () => {
+    const r = settleLeague([team(2), team(2), team(2), team(0)]);
+    expect(r.void).toBe("NoneAboveMedian");
+    expect(r.entries.every((e) => e.payout === e.stake)).toBe(true);
+    checkInvariants(r);
   });
-  it("conservation holds on many random rounds, and odd ones always have a draw", () => {
+  it("conservation holds on many random rounds, and a winner always beats the median strictly", () => {
     let seed = 7;
     const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31);
     for (let i = 0; i < 300; i++) {
       const n = 4 + Math.floor(rnd() * 9);
-      const r = settleLeague(Array.from({ length: n }, () => team(Math.round(rnd() * 8 - 4), Math.floor(rnd() * 4))), DEFAULT_LEAGUE_PARAMS, 3n * STAKE);
+      const teams = Array.from({ length: n }, () => team(Math.round(rnd() * 8 - 4), Math.floor(rnd() * 4)));
+      const r = settleLeague(teams, DEFAULT_LEAGUE_PARAMS, 3n * STAKE);
       checkInvariants(r);
-      if (!r.void && !r.coalitionMode && n % 2 === 1) expect(r.teams.some((t) => t.isDraw)).toBe(true);
+      if (r.void) continue;
+      r.teams.forEach((t, j) => expect(t.isWinner).toBe(teams[j].ret > r.median));
     }
   });
-  it("coalition: half or more tied at the top all win with a = 1", () => {
+  it("exactly half tied at the top: they are above the median and win with a = 1", () => {
     const r = settleLeague([team(2), team(2), team(1), team(0)]);
-    expect(r.coalitionMode).toBe(true);
     expect(r.teams.map((t) => t.isWinner)).toEqual([true, true, false, false]);
     expect(r.teams[0].a).toBe(r.teams[1].a);
     checkInvariants(r);

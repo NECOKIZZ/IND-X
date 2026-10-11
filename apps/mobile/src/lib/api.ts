@@ -16,6 +16,14 @@ import type {
 } from "@indx/core";
 import { API_URL } from "./config";
 
+export interface BasketQuote {
+  weights: number[];
+  maxUsd: number;
+  usd: number;
+  legs: { mint: string; symbol: string; weightBps: number; amountRaw: string; uiAmount: number; usd: number; heldRaw: string }[];
+  wrapLamports: string;
+}
+
 export class ApiError extends Error {
   constructor(readonly status: number, message: string) {
     super(message);
@@ -49,6 +57,8 @@ export const api = {
   leaderboard: () => call<LeaderRow[]>("/v1/leaderboard"),
   verify: (round: string) => call<{ matches: boolean; onChainHash: string; recomputedHash: string }>(`/v1/rounds/${round}/verify`),
 
+  /** Exactly what a create transaction would lock (the server builds the tx from the same function). */
+  quote: (r: { wallet?: string; legs: CreateRequest["legs"]; usd?: number }) => call<BasketQuote>("/v1/basket/quote", r),
   planCreate: (r: CreateRequest) => call<TxPlan>("/v1/tx/create", r),
   planBack: (r: BackRequest) => call<TxPlan>("/v1/tx/back", r),
   planBuy: (r: BuyRequest) => call<TxPlan>("/v1/tx/buy", r),

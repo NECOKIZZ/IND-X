@@ -8,6 +8,7 @@ import type { EtfSummary, RoundView } from "@indx/core";
 import { brand, radius, signColor, space, useColors } from "@/theme";
 import { pct, short, usd } from "@/lib/format";
 import { LogoStack } from "./AssetLogo";
+import { Sparkline } from "./Sparkline";
 import { Card, Num, Row, Text } from "./ui";
 
 export function MedianLine({ value, live }: { value: number | null; live: boolean }) {
@@ -28,7 +29,7 @@ export function MedianLine({ value, live }: { value: number | null; live: boolea
 
 export function EtfRow({ etf, roundId, mine }: { etf: EtfSummary; roundId: string; mine?: boolean }) {
   const c = useColors();
-  const tone = etf.standing === "above" ? c.up : etf.standing === "below" ? c.down : etf.standing === "draw" ? c.line : c.textFaint;
+  const tone = etf.standing === "above" ? c.up : etf.standing === "below" ? c.down : c.textFaint;
   return (
     <Card onPress={() => router.push(`/etf/${roundId}/${etf.key}`)} style={{ marginBottom: space.sm, paddingVertical: space.md + 2, borderColor: mine ? c.text : c.border, borderWidth: mine ? 1 : StyleSheet.hairlineWidth }}>
       <Row gap={space.md}>
@@ -47,15 +48,18 @@ export function EtfRow({ etf, roundId, mine }: { etf: EtfSummary; roundId: strin
                 </Text>
               ) : null}
             </Row>
-            <Num v="bodyStrong" color={signColor(c, etf.retPct)}>
-              {pct(etf.retPct)}
-            </Num>
+            <Row gap={space.sm}>
+              <Sparkline values={etf.spark} color={signColor(c, etf.retPct)} baseline={c.border} />
+              <Num v="bodyStrong" color={signColor(c, etf.retPct)}>
+                {pct(etf.retPct)}
+              </Num>
+            </Row>
           </Row>
           <Row style={{ justifyContent: "space-between" }}>
             <Row>
               <LogoStack legs={etf.legs} size={18} />
               <Text v="small" color={c.textMuted}>
-                {etf.tickets} · {short(etf.captain)}
+                {etf.tickets} {etf.tickets === 1 ? "ticket" : "tickets"} · {short(etf.captain)}
               </Text>
             </Row>
             {etf.refunded ? (

@@ -99,7 +99,10 @@ export class Keeper {
     return nextWeeklyRound(now);
   }
 
-  async openRound(times = this.nextTimes(this.clock())): Promise<bigint> {
+  async openRound(times?: { entryClose: number; end: number }): Promise<bigint> {
+    // Schedule from the later of our clock and the chain's: the program checks
+    // the chain's, so a server clock running behind can't open a round in the past.
+    times ??= this.nextTimes(Math.max(this.clock(), (await this.L.io.now()) * 1000));
     const cfg = await this.L.reader.config();
     if (!cfg) throw new Error("league not initialized");
     const id = cfg.roundCount + 1n;
@@ -161,7 +164,7 @@ export class Keeper {
     if (entries.length !== round.entryCount) throw new Error(`round ${roundId}: ${entries.length} of ${round.entryCount} entries found (an entry closed early?)`);
     const s = await this.computeSettlement(round, entries);
     this.log(`round ${roundId}: ${entries.length} entries, ${s.teams.length} teams, void=${s.void ?? "no"}${s.median !== null ? `, MEDIAN ${(Number(s.median) / 1e10).toFixed(3)}%` : ""}`);
-    for (const t of s.teams) this.log(`  ${t.isWinner ? "WIN " : t.isDraw ? "DRAW" : "    "} ${t.teamKey.slice(0, 8)} ${(Number(t.ret) / 1e10).toFixed(3)}% (${t.members} on team)`);
+    for (const t of s.teams) this.log(`  ${t.isWinner ? "WIN " : "    "} ${t.teamKey.slice(0, 8)} ${(Number(t.ret) / 1e10).toFixed(3)}% (${t.members} on team)`);
     if (dryRun) return s;
     await this.L.store.saveInputs(roundId, s.inputs);
     await submitSettlement(this.L.io, this.L.b, this.kp, roundId, s, entries, { lookupTables: await this.L.lookupTables(), log: (m) => this.log(`  ${m}`) });

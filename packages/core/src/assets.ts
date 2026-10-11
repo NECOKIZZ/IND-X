@@ -1,6 +1,7 @@
 // The tokens a basket can hold on Solana mainnet: xStocks (Backed's
 // tokenized stocks and ETFs, Token-2022, 8 decimals, with a ScaledUiAmount
-// multiplier for dividends and splits) plus a small crypto slice.
+// multiplier for dividends and splits) plus a crypto slice: BTC, ETH, SOL and
+// BNB, up to 20% of a basket in total.
 //
 // Pyth feed ids are the token's own feed (e.g. Crypto.AAPLX/USD) where Pyth
 // has one; the keeper uses Jupiter's price API by default and Pyth Hermes
@@ -65,6 +66,7 @@ export const MAINNET_ASSETS: AssetInfo[] = [
     decimals: 8,
     token2022: false,
     pyth: "2817d7bfe5c64b8ea956e9a26f573ef64e72e4d7891f2d6af9bcc93f7aff9a97",
+    logo: "https://assets.coingecko.com/coins/images/1/large/bitcoin.png",
   },
   {
     symbol: "ETH",
@@ -75,8 +77,35 @@ export const MAINNET_ASSETS: AssetInfo[] = [
     decimals: 8,
     token2022: false,
     pyth: "9d4294bbcd1174d6f2003ec365831e64cc31d9f6f15a2b85399db8d5000960f6",
+    logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs/logo.png",
+  },
+  {
+    // Wrapped SOL: on mainnet the app wraps the wallet's SOL when locking.
+    symbol: "SOL",
+    ticker: "SOL",
+    name: "Solana",
+    kind: "crypto",
+    mint: "So11111111111111111111111111111111111111112",
+    decimals: 9,
+    token2022: false,
+    pyth: "ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d",
+    logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
+  },
+  {
+    symbol: "BNB",
+    ticker: "BNB",
+    name: "BNB",
+    kind: "crypto",
+    mint: "9gP2kCy3wA1ctvYWQk75guqXuHfrEomqydHLtcTCqiLa",
+    decimals: 8,
+    token2022: false,
+    pyth: "2f95862b045670cd22bee3114c39763a4a08beeb663b145d283c31d7d1101c4f",
+    logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/9gP2kCy3wA1ctvYWQk75guqXuHfrEomqydHLtcTCqiLa/logo.png",
   },
 ];
+
+/** The native SOL mint (wrapped SOL). */
+export const NATIVE_SOL_MINT = "So11111111111111111111111111111111111111112";
 
 /** USDC on Solana mainnet: the ticket token. */
 export const USDC_MAINNET = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";

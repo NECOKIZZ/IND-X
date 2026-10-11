@@ -1,14 +1,19 @@
+import { useState } from "react";
 import { Image } from "expo-image";
 import { View } from "react-native";
 import { useColors } from "@/theme";
 import { Text } from "./ui";
 
+/** A token's logo; its ticker in a circle when there's no logo or it fails to load. */
 export function AssetLogo({ uri, ticker, size = 36 }: { uri?: string | null; ticker: string; size?: number }) {
   const c = useColors();
-  if (uri) return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: c.fill }} contentFit="cover" transition={150} />;
+  const [failed, setFailed] = useState(false);
+  if (uri && !failed) {
+    return <Image source={{ uri }} onError={() => setFailed(true)} style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: c.fill }} contentFit="cover" transition={150} />;
+  }
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: c.fill, alignItems: "center", justifyContent: "center" }}>
-      <Text v="smallStrong" style={{ fontSize: size * 0.32 }}>
+      <Text v="smallStrong" style={{ fontSize: size * 0.3 }}>
         {ticker.slice(0, 4)}
       </Text>
     </View>

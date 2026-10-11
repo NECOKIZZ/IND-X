@@ -3,6 +3,7 @@
 // first (Jupiter on mainnet, the test desk on testnet).
 
 import { useMemo, useState, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { BlurView } from "expo-blur";
 import { router } from "expo-router";
@@ -10,7 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { AssetView } from "@indx/core";
 import { brand, palette, radius, signColor, space, TAB_BAR_SPACE, type, useColors } from "@/theme";
 import { useAssets, useConfig, useRound, useWalletView } from "@/lib/queries";
-import { api } from "@/lib/api";
+import { api, type BasketQuote } from "@/lib/api";
 import { bpsToPct, pct, usd } from "@/lib/format";
 import { tap } from "@/lib/haptics";
 import { useWallet } from "@/wallet/WalletProvider";
@@ -18,6 +19,7 @@ import { AssetLogo } from "@/components/AssetLogo";
 import { PageTitle, TopBar } from "@/components/Header";
 import { Icon } from "@/components/Icon";
 import { useTxAction } from "@/components/TxAction";
+import { useToast } from "@/components/Toast";
 import { Button, Card, Chip, Divider, Empty, IconButton, Label, Num, Row, Screen, SectionTitle, Segmented, Skeleton, Text } from "@/components/ui";
 
 type Step = "pick" | "weights" | "details";
@@ -43,6 +45,7 @@ export default function Create() {
   const { address } = useWallet();
   const walletView = useWalletView(address);
   const { run, busy } = useTxAction();
+  const toast = useToast();
 
   const [step, setStep] = useState<Step>("pick");
   const [filter, setFilter] = useState<Filter>("all");
@@ -52,6 +55,9 @@ export default function Create() {
   const [size, setSize] = useState<number | null>(null);
   const [name, setName] = useState("");
   const [fee, setFee] = useState(100);
+  // The exact basket the transaction will lock, fetched when the user taps Review.
+  const [review, setReview] = useState<BasketQuote | null>(null);
+  const [reviewing, setReviewing] = useState(false);
 
   const rules = config.data?.rules;
   const minTokens = rules?.minTokens ?? 3;
@@ -72,15 +78,17 @@ export default function Create() {
             ? "Every token needs a weight"
             : null;
 
-  const maxUsd = useMemo(() => {
-    if (!walletView.data || !legs.length || weightError) return 0;
-    const caps = legs.map((a, i) => {
-      const bal = walletView.data!.assets.find((b) => b.mint === a.mint);
-      const value = bal && a.rawPrice ? (Number(bal.raw) / 10 ** a.decimals) * a.rawPrice : 0;
-      return value / (weights[i] / 10_000);
-    });
-    return Math.max(0, Math.min(...caps));
-  }, [walletView.data, legs, weights, weightError]);
+  // What the wallet can lock, and what a given size locks: always from the
+  // server's quote, the same function that builds the transaction.
+  const legsReq = legs.map((a, i) => ({ mint: a.mint, weightBps: weights[i] }));
+  const quoteKey = JSON.stringify(legsReq);
+  const maxQuote = useQuery({
+    queryKey: ["quote", address, quoteKey, "max"],
+    queryFn: () => api.quote({ wallet: address!, legs: legsReq }),
+    enabled: step === "details" && !!address && !weightError && legs.length >= minTokens,
+    refetchInterval: 20_000,
+  });
+  const maxUsd = maxQuote.data?.maxUsd ?? 0;
   const minUsd = rules?.minBasketUsd ?? 10;
 
   const togglePick = (mint: string) => {
@@ -231,7 +239,6 @@ export default function Create() {
   const sizes = [10, 25, 50, 100].filter((s) => s <= maxUsd);
   const chosen = size ?? (maxUsd >= minUsd ? Math.min(maxUsd, 25) : null);
   const needBuy = !address || maxUsd < minUsd;
-  const legsReq = legs.map((a, i) => ({ mint: a.mint, weightBps: weights[i] }));
   const testnet = config.data?.cluster !== "mainnet";
 
   return (
@@ -285,15 +292,51 @@ export default function Create() {
           <Card style={{ gap: space.md }}>
             <Row style={{ flexWrap: "wrap" }}>
               {sizes.map((s) => (
-                <Chip key={s} label={usd(s, 0)} selected={chosen === s} onPress={() => setSize(s)} />
+                <Chip key={s} label={usd(s, 0)} selected={chosen === s} onPress={() => (setSize(s), setReview(null))} />
               ))}
-              <Chip label={`Max ${usd(maxUsd, 0)}`} selected={chosen === maxUsd} onPress={() => setSize(maxUsd)} />
+              <Chip label={`Max ${usd(maxUsd, 0)}`} selected={chosen === maxUsd} onPress={() => (setSize(maxUsd), setReview(null))} />
             </Row>
             <Text v="small" color={c.textMuted}>
               The locked stocks are your ETF and come back after the round, whatever happens. Only the {usd(round.data?.stakeUsd ?? 5, 0)} ticket is at stake.
             </Text>
           </Card>
         )}
+
+        {review ? (
+          <>
+            <SectionTitle title="You’re about to lock" />
+            <Card style={{ gap: space.md }}>
+              {review.legs.map((l, i) => (
+                <Row key={l.mint} style={{ justifyContent: "space-between" }}>
+                  <Row gap={6}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: LEG_COLORS[i % LEG_COLORS.length] }} />
+                    <Text v="bodyStrong">{byMint.get(l.mint)?.ticker ?? l.symbol}</Text>
+                  </Row>
+                  <Text v="small" color={c.textMuted}>
+                    {l.uiAmount.toFixed(l.uiAmount < 1 ? 5 : 3)} · <Text v="smallStrong">{usd(l.usd)}</Text>
+                  </Text>
+                </Row>
+              ))}
+              <Divider />
+              <Row style={{ justifyContent: "space-between" }}>
+                <Text v="bodyStrong">Basket</Text>
+                <Num v="bodyStrong">{usd(review.usd)}</Num>
+              </Row>
+              <Row style={{ justifyContent: "space-between" }}>
+                <Text color={c.textMuted}>Ticket (at stake)</Text>
+                <Num>{usd(round.data?.stakeUsd ?? 5)}</Num>
+              </Row>
+              {BigInt(review.wrapLamports) > 0n ? (
+                <Text v="small" color={c.textMuted}>
+                  Includes wrapping {(Number(review.wrapLamports) / 1e9).toFixed(4)} SOL from your wallet (gas is kept aside).
+                </Text>
+              ) : null}
+              <Text v="small" color={c.textFaint}>
+                These are the exact amounts your wallet will sign for. Anything else in your wallet stays there.
+              </Text>
+            </Card>
+          </>
+        ) : null}
 
         <SectionTitle title="Name" />
         <TextInput
@@ -317,25 +360,45 @@ export default function Create() {
       </Screen>
       <ActionBar>
         <Row>
-          <Button title="Back" kind="secondary" onPress={() => setStep("weights")} />
-          <Button
-            title={`Lock & enter · ${usd(round.data?.stakeUsd ?? 5, 0)}`}
-            style={{ flex: 1 }}
-            disabled={!address || needBuy || !name.trim() || chosen === null}
-            loading={busy}
-            onPress={() =>
-              run(
-                (w) => api.planCreate({ wallet: w, legs: legsReq, usd: chosen ?? undefined, name: name.trim(), buyFeeBps: fee }),
-                "You’re in. Good luck.",
-                (plan) => {
-                  setStep("pick");
-                  setPicked([]);
-                  setName("");
-                  router.push(`/etf/${plan.meta?.roundId}/${plan.meta?.teamKey}`);
-                },
-              )
-            }
-          />
+          <Button title="Back" kind="secondary" onPress={() => (review ? setReview(null) : setStep("weights"))} />
+          {review ? (
+            <Button
+              title={`Confirm & sign · ${usd((review.usd ?? 0) + (round.data?.stakeUsd ?? 5))}`}
+              style={{ flex: 1 }}
+              loading={busy}
+              onPress={() =>
+                run(
+                  (w) => api.planCreate({ wallet: w, legs: legsReq, usd: review.usd, name: name.trim(), buyFeeBps: fee }),
+                  "You’re in. Good luck.",
+                  (plan) => {
+                    setReview(null);
+                    setStep("pick");
+                    setPicked([]);
+                    setName("");
+                    router.push(`/etf/${plan.meta?.roundId}/${plan.meta?.teamKey}`);
+                  },
+                )
+              }
+            />
+          ) : (
+            <Button
+              title="Review"
+              icon="arrow"
+              style={{ flex: 1 }}
+              disabled={!address || needBuy || !name.trim() || chosen === null}
+              loading={reviewing}
+              onPress={async () => {
+                setReviewing(true);
+                try {
+                  setReview(await api.quote({ wallet: address!, legs: legsReq, usd: chosen ?? undefined }));
+                } catch (e) {
+                  toast((e as Error).message, "error");
+                } finally {
+                  setReviewing(false);
+                }
+              }}
+            />
+          )}
         </Row>
       </ActionBar>
     </View>

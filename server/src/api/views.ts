@@ -11,6 +11,7 @@
 import { PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import {
+  DEFAULT_LEAGUE_PARAMS,
   basketReturn,
   buildSnapshot,
   retToPct,
@@ -112,6 +113,15 @@ interface RoundData {
   start: Map<string, Snapshot> | null;
   end: Map<string, Snapshot> | null;
   live: LivePrices | null;
+  series: Series | null;
+}
+
+/** Returns over the round, from the chart samples (+ the live price): per ETF, the S&P 500 and the median. */
+interface Series {
+  t: number[]; // unix ms; t[0] is the start (all returns 0)
+  byTeam: Map<string, (number | null)[]>;
+  bench: (number | null)[];
+  median: (number | null)[];
 }
 
 const cache = new Map<string, { at: number; p: Promise<RoundData> }>();
@@ -146,9 +156,10 @@ async function loadRoundData(L: League, roundId: bigint): Promise<RoundData> {
     const inputs = await L.store.loadInputs(roundId);
     if (inputs) {
       const { recomputeFromInputs } = await import("@indx/core");
-      return { round, phase, teams, entries, s: recomputeFromInputs(inputs), pricing: "final", start: snapsFromInputs(inputs.prices.start), end: snapsFromInputs(inputs.prices.end), live: null };
+      const start = snapsFromInputs(inputs.prices.start);
+      return { round, phase, teams, entries, s: recomputeFromInputs(inputs), pricing: "final", start, end: snapsFromInputs(inputs.prices.end), live: null, series: await buildSeries(L, round, teams, entries, inputs, start, null) };
     }
-    return { round, phase, teams, entries, s: null, pricing: "final", start: null, end: null, live: null };
+    return { round, phase, teams, entries, s: null, pricing: "final", start: null, end: null, live: null, series: null };
   }
 
   const live = await livePrices(L).catch(() => null);
@@ -177,7 +188,50 @@ async function loadRoundData(L: League, roundId: bigint): Promise<RoundData> {
           cryptoTokens: L.assets.filter((a) => a.kind === "crypto").map((a) => a.mint),
         })
       : null;
-  return { round, phase, teams, entries, s, pricing, start, end: liveSnap, live };
+  // Charts only once the round has really started (a preview has no history).
+  const series = pricing === "live" && start ? await buildSeries(L, round, teams, entries, null, start, live) : null;
+  return { round, phase, teams, entries, s, pricing, start, end: liveSnap, live, series };
+}
+
+async function buildSeries(L: League, round: RoundAccount, teams: TeamAccount[], entries: EntryAccount[], inputs: any, start: Map<string, Snapshot>, live: LivePrices | null): Promise<Series | null> {
+  const norm = (p: { value: bigint; decimals: number }) => p.value * 10n ** BigInt(18 - p.decimals);
+  // Each team's captain basket: open entries, or the published inputs once entries are closed.
+  const baskets = new Map<string, { mints: string[]; amounts: bigint[] }>();
+  for (const t of teams) {
+    const e = entries.find((x) => x.wallet.equals(t.captain));
+    const fromInputs = inputs?.entries.find((x: any) => x.wallet === t.captain.toBase58() && x.basket);
+    const b: { mints: string[]; amounts: bigint[] } | null = e ? { mints: e.basket.map((l) => l.mint.toBase58()), amounts: e.basket.map((l) => l.amount) } : fromInputs ? { mints: fromInputs.basket.mints, amounts: fromInputs.basket.amounts.map((a: string) => BigInt(a)) } : null;
+    if (b && b.mints.every((m: string) => start.get(m))) baskets.set(t.key, b);
+  }
+  // Teams that are actually scored (an invalid basket is refunded, not ranked).
+  const scored = inputs ? new Set<string>(inputs.teams.map((t: any) => t.teamKey)) : null;
+  const benchMint = L.assets.find((a) => a.ticker === BENCHMARK_TICKER)?.mint;
+  const samples = [...(await L.store.loadSamples(round.id, "track")), ...(await L.store.loadSamples(round.id, "end"))]
+    .filter((s) => s.at > round.entryClose * 1000)
+    .sort((a, b) => a.at - b.at);
+  const points: { t: number; sample: Map<string, { value: bigint; decimals: number }> | null }[] = [{ t: round.entryClose * 1000, sample: null }, ...samples.map((s) => ({ t: s.at, sample: s.sample }))];
+  if (live) points.push({ t: live.at, sample: live.sample });
+  const out: Series = { t: points.map((p) => p.t), byTeam: new Map(), bench: [], median: [] };
+  for (const key of baskets.keys()) out.byTeam.set(key, []);
+  for (const p of points) {
+    const rets: number[] = [];
+    for (const [key, b] of baskets) {
+      let r: number | null = 0;
+      if (p.sample) {
+        const endP = b.mints.map((m) => p.sample!.get(m));
+        r = endP.some((x) => !x || x.value === 0n) ? null : retToPct(basketReturn(b.amounts, b.mints.map((m) => norm(start.get(m)!)), endP.map((x) => norm(x!))));
+      }
+      out.byTeam.get(key)!.push(r);
+      if (r !== null && (!scored || scored.has(key))) rets.push(r);
+    }
+    rets.sort((a, b) => a - b);
+    // No median while the round couldn't be scored (too few ETFs: it voids).
+    out.median.push(rets.length >= DEFAULT_LEAGUE_PARAMS.minTeams ? (rets.length % 2 ? rets[(rets.length - 1) / 2] : (rets[rets.length / 2 - 1] + rets[rets.length / 2]) / 2) : null);
+    const bs = benchMint ? start.get(benchMint) : undefined;
+    const be = benchMint && p.sample ? p.sample.get(benchMint) : undefined;
+    out.bench.push(!benchMint || !bs ? null : !p.sample ? 0 : be ? (Number(be.value) / Number(bs.value) - 1) * 100 : null);
+  }
+  return out;
 }
 
 function legViews(L: League, team: TeamAccount, d: RoundData): LegView[] {
@@ -204,7 +258,7 @@ function summaries(L: League, d: RoundData): EtfSummary[] {
   const median = d.s?.median ?? null;
   const rows = d.teams.map((t): EtfSummary => {
     const st = d.s?.teams.find((x) => x.teamKey === t.key);
-    const standing: Standing | null = !d.s || d.s.void || !st ? null : st.isWinner ? "above" : st.isDraw ? "draw" : "below";
+    const standing: Standing | null = !d.s || d.s.void || !st ? null : st.isWinner ? "above" : "below";
     const retPct = st ? retToPct(st.ret) : null;
     return {
       key: t.key,
@@ -219,6 +273,7 @@ function summaries(L: League, d: RoundData): EtfSummary[] {
       standing,
       rank: null,
       ticketPayoutUsd: st ? toUnits(st.ticketPayout, L.deployment.stakeDecimals) : d.s ? stakeUsd : null,
+      spark: d.series?.byTeam.get(t.key)?.filter((x): x is number => x !== null) ?? [],
       refunded: !!d.s && !d.s.void && !st,
     };
   });
@@ -249,6 +304,7 @@ export async function roundView(L: League, roundId: bigint): Promise<RoundView> 
     voidReason: d.phase === "voided" ? (d.s?.void ?? "voided") : d.pricing === "final" && d.s?.void ? d.s.void : null,
     inputsHash: d.phase === "settled" || d.phase === "voided" ? d.round.inputsHash : null,
     serverTime: await chainNow(L),
+    medianSeries: d.series ? d.series.t.map((t, i) => ({ t, pct: d.series!.median[i] })).filter((p): p is { t: number; pct: number } => p.pct !== null) : [],
   };
 }
 
@@ -276,39 +332,25 @@ export async function etfView(L: League, roundId: bigint, key: string): Promise<
     roundId: roundId.toString(),
     roundPhase: d.phase,
     stakeUsd: toUnits(d.round.stake, L.deployment.stakeDecimals),
+    maxBackers: d.round.maxBackers,
     entryClose: d.round.entryClose,
     end: d.round.end,
     memberList: memberRows.sort((a, b) => a.index - b.index).map((m) => ({ wallet: m.wallet, isCreator: m.isCreator, isCaptain: m.wallet === captain })),
-    chart: await chart(L, d, team, inputs),
+    chart: chart(d, team.key),
     medianPct: d.s?.median !== null && d.s?.median !== undefined ? retToPct(d.s.median) : null,
   };
 }
 
-/** The captain's basket return over the round's chart samples, with the S&P 500 alongside. */
-async function chart(L: League, d: RoundData, team: TeamAccount, inputs: any): Promise<ChartPoint[]> {
-  const captainEntry = d.entries.find((e) => e.wallet.equals(team.captain));
-  const fromInputs = inputs?.entries.find((e: any) => e.wallet === team.captain.toBase58() && e.basket);
-  const mints: string[] = captainEntry ? captainEntry.basket.map((l) => l.mint.toBase58()) : fromInputs?.basket.mints ?? team.legs.map((l) => l.mint.toBase58());
-  const amounts: bigint[] = captainEntry ? captainEntry.basket.map((l) => l.amount) : fromInputs?.basket.amounts.map((a: string) => BigInt(a)) ?? [];
-  if (!d.start || !amounts.length) return [];
-  const bench = L.assets.find((a) => a.ticker === BENCHMARK_TICKER)?.mint;
-  const norm = (p: { value: bigint; decimals: number }) => p.value * 10n ** BigInt(18 - p.decimals);
-  const startP = mints.map((m) => d.start!.get(m));
-  if (startP.some((p) => !p)) return [];
-  const startNorm = startP.map((p) => norm(p!));
-  const samples = [...(await L.store.loadSamples(d.round.id, "track")), ...(await L.store.loadSamples(d.round.id, "end"))].sort((a, b) => a.at - b.at);
-  const points: ChartPoint[] = [{ t: d.round.entryClose * 1000, retPct: 0, benchPct: bench ? 0 : null }];
-  const add = (t: number, sample: Map<string, { value: bigint; decimals: number }>) => {
-    const endP = mints.map((m) => sample.get(m));
-    if (endP.some((p) => !p || p.value === 0n)) return;
-    const r = basketReturn(amounts, startNorm, endP.map((p) => norm(p!)));
-    const bs = bench ? d.start!.get(bench) : undefined;
-    const be = bench ? sample.get(bench) : undefined;
-    points.push({ t, retPct: retToPct(r), benchPct: bs && be ? (Number(be.value) / Number(bs.value) - 1) * 100 : null });
-  };
-  for (const s of samples) if (s.at > d.round.entryClose * 1000) add(s.at, s.sample);
-  if (d.pricing === "live" && d.live) add(d.live.at, d.live.sample);
-  return points;
+/** One ETF's return over the round, with the S&P 500 and the median at each point. */
+function chart(d: RoundData, key: string): ChartPoint[] {
+  const ser = d.series;
+  const mine = ser?.byTeam.get(key);
+  if (!ser || !mine) return [];
+  const out: ChartPoint[] = [];
+  ser.t.forEach((t, i) => {
+    if (mine[i] !== null) out.push({ t, retPct: mine[i]!, benchPct: ser.bench[i], medianPct: ser.median[i] });
+  });
+  return out;
 }
 
 export async function roundSummaries(L: League, limit = 20): Promise<RoundSummary[]> {
@@ -349,7 +391,7 @@ function stateOf(phase: RoundPhase, standing: Standing | null, refunded: boolean
   if (refunded) return "refunded";
   if (phase === "open") return "entered";
   if (phase === "live" || phase === "settling") return "live";
-  return standing === "above" ? "won" : standing === "draw" ? "draw" : "lost";
+  return standing === "above" ? "won" : "lost";
 }
 
 export async function walletView(L: League, walletStr: string): Promise<WalletView> {
@@ -403,7 +445,7 @@ export async function walletView(L: League, walletStr: string): Promise<WalletVi
   }
   entries.sort((a, b) => Number(BigInt(b.roundId) - BigInt(a.roundId)));
 
-  const done = entries.filter((e) => ["won", "draw", "lost"].includes(e.state));
+  const done = entries.filter((e) => e.state === "won" || e.state === "lost");
   return {
     wallet: walletStr,
     sol: (solAcc?.lamports ?? 0) / 1e9,
@@ -413,7 +455,6 @@ export async function walletView(L: League, walletStr: string): Promise<WalletVi
     stats: {
       rounds: done.length,
       wins: done.filter((e) => e.state === "won").length,
-      draws: done.filter((e) => e.state === "draw").length,
       netUsd: done.reduce((s, e) => s + (e.payoutUsd ?? 0) - e.stakeUsd, 0),
     },
   };
@@ -422,7 +463,7 @@ export async function walletView(L: League, walletStr: string): Promise<WalletVi
 function entryView(L: League, d: RoundData, teamKey: string, isCreator: boolean, wallet: string, claimed: boolean, basket: { mint: string; amount: bigint; returned: boolean }[]): WalletEntryView {
   const team = d.teams.find((t) => t.key === teamKey);
   const st = d.s?.teams.find((t) => t.teamKey === teamKey);
-  const standing: Standing | null = !d.s || d.s.void || !st ? null : st.isWinner ? "above" : st.isDraw ? "draw" : "below";
+  const standing: Standing | null = !d.s || d.s.void || !st ? null : st.isWinner ? "above" : "below";
   const refunded = !!d.s && !d.s.void && !st;
   const dec = L.deployment.stakeDecimals;
   // Exact payout from the settlement for this wallet's entry.
@@ -463,10 +504,9 @@ export async function leaderboard(L: League, limit = 50): Promise<LeaderRow[]> {
     for (const e of inputs.entries) {
       if (e.status.kind !== "playing") continue;
       const t = teamRow.get(e.status.team);
-      const r = rows.get(e.wallet) ?? { wallet: e.wallet, rounds: 0, wins: 0, draws: 0, netUsd: 0, bestRetPct: null };
+      const r = rows.get(e.wallet) ?? { wallet: e.wallet, rounds: 0, wins: 0, netUsd: 0, bestRetPct: null };
       r.rounds++;
       if (t?.isWinner) r.wins++;
-      if (t?.isDraw) r.draws++;
       r.netUsd += toUnits(BigInt(e.payout) - BigInt(inputs.stake), dec);
       if (e.status.captain && t) r.bestRetPct = Math.max(r.bestRetPct ?? -Infinity, retToPct(t.ret));
       rows.set(e.wallet, r);

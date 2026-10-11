@@ -38,10 +38,10 @@ export default function EtfScreen() {
   if (etf.error) return <ErrorView error={etf.error} onRetry={() => etf.refetch()} />;
   const e = etf.data!;
   const open = e.roundPhase === "open";
-  const standing = e.standing === "above" ? `Above ${brand.line}` : e.standing === "below" ? `Below ${brand.line}` : e.standing === "draw" ? `On ${brand.line}` : null;
+  const standing = e.standing === "above" ? `Above ${brand.line}` : e.standing === "below" ? `Not above ${brand.line}` : null;
   const tone = e.standing === "above" ? c.up : e.standing === "below" ? c.down : c.line;
   const inThis = mine?.etfKey === e.key;
-  const full = e.members >= 20;
+  const full = e.members >= e.maxBackers; // members excludes the captain
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>

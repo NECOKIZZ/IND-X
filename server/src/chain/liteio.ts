@@ -19,6 +19,18 @@ export class LiteIO implements ChainIO {
     return new LiteIO(svm);
   }
 
+  /** Write an account directly (tests: clone mainnet accounts, set balances). */
+  setAccount(pubkey: PublicKey, a: { data: Buffer; owner: PublicKey; lamports: number; executable?: boolean }) {
+    this.svm.setAccount({
+      address: addr(pubkey),
+      data: Uint8Array.from(a.data),
+      programAddress: addr(a.owner),
+      lamports: lamports(BigInt(a.lamports)),
+      executable: a.executable ?? false,
+      space: BigInt(a.data.length),
+    } as never);
+  }
+
   airdrop(to: PublicKey, sol: number) {
     this.svm.airdrop(addr(to), lamports(BigInt(Math.round(sol * 1e9))));
   }
