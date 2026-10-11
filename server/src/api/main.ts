@@ -22,3 +22,19 @@ if (runKeeper) {
   console.log(`keeper running (${k.opts.schedule}, prices: ${k.opts.source})`);
   void k.run(Number(process.env.LEAGUE_TICK_SEC ?? (L.cluster === "lite" ? 10 : 30)) * 1000);
 }
+
+// On a free host that sleeps when idle (Render sets RENDER_EXTERNAL_URL), tick
+// the keeper through the public URL every 4 minutes: it keeps the instance
+// awake and the keeper running even when the external cron is late.
+// SELF_TICK=0 turns it off.
+const selfUrl = process.env.RENDER_EXTERNAL_URL ?? process.env.SELF_TICK_URL;
+const tickSecret = process.env.KEEPER_TICK_SECRET;
+if (!runKeeper && selfUrl && tickSecret && process.env.SELF_TICK !== "0") {
+  const tick = () =>
+    fetch(`${selfUrl.replace(/\/$/, "")}/v1/keeper/tick`, { method: "POST", headers: { authorization: `Bearer ${tickSecret}` }, signal: AbortSignal.timeout(120_000) })
+      .then((r) => { if (!r.ok) console.warn(`self tick: HTTP ${r.status}`); })
+      .catch((e) => console.warn(`self tick: ${(e as Error).message}`));
+  setTimeout(tick, 20_000);
+  setInterval(tick, 4 * 60_000);
+  console.log(`self tick every 4 min via ${selfUrl}`);
+}
