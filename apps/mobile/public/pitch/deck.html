@@ -1,0 +1,178 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IndX deck</title><link rel="icon" href="logo.svg">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css">
+<style>
+body{min-height:100vh;display:flex;flex-direction:column}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 20px;border-bottom:1px solid var(--line)}
+.stage{flex:1;display:flex;align-items:center;justify-content:center;padding:16px;overflow:hidden}
+.frame{width:1280px;height:720px;transform-origin:center center;flex:none}
+.slide{display:none;width:1280px;height:720px;background:radial-gradient(1200px 600px at 85% 0%,rgba(197,218,197,.10),transparent 60%),var(--panel);border:1px solid var(--line);border-radius:28px;padding:64px 72px;position:relative;overflow:hidden}
+.slide.on{display:flex;flex-direction:column}
+.slide .label{font-size:14px;margin-bottom:18px}
+.slide h1{font-size:76px;line-height:1.02;letter-spacing:-3px;font-weight:300;margin:0}
+.slide h2{font-size:56px;line-height:1.05;letter-spacing:-2px;font-weight:300;margin:0 0 28px}
+.slide p,.slide li{font-size:22px;line-height:32px;color:rgba(238,242,237,.8)}
+.slide .foot{position:absolute;left:72px;right:72px;bottom:32px;display:flex;justify-content:space-between;font-size:13px;color:var(--faint)}
+.g{display:grid;gap:18px}.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+.c{background:rgba(238,242,237,.04);border:1px solid var(--line);border-radius:22px;padding:24px}
+.c b{display:block;font-size:46px;font-weight:300;letter-spacing:-1.5px;color:var(--sage);margin-bottom:6px}
+.c h3{font-size:22px;font-weight:500;margin:0 0 8px}.c p,.c span{font-size:17px;line-height:25px;color:var(--muted);margin:0}
+.slide table{font-size:17px}.slide td,.slide th{padding:9px 10px}
+.notes{display:none;max-width:1000px;margin:0 auto 16px;padding:16px 20px;background:var(--panel);border:1px solid var(--line);border-radius:18px;font-size:15px;line-height:23px;color:var(--muted)}
+body.shownotes .notes{display:block}
+.notes b{color:var(--sage);font-weight:500}
+.nav{display:flex;gap:8px;align-items:center}
+.count{font-size:13px;color:var(--faint);min-width:52px;text-align:center}
+@media print{
+  @page{size:1280px 900px;margin:0}
+  .top,.nav,.notes{display:none!important}.stage{display:block;padding:0;overflow:visible}.frame{transform:none!important;margin:0!important;width:auto;height:auto}
+  .slide{display:flex!important;flex-direction:column;border-radius:0;border:0;break-inside:avoid}
+  .pslide{width:1280px;height:900px;break-after:page;background:var(--ink);overflow:hidden}.pslide:last-child{break-after:auto}
+  .pnote{padding:18px 72px;font-size:15px;line-height:22px;color:var(--muted)}
+  body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style></head><body>
+<div class="top"><a class="mark" href="./"><i><img src="logo.svg" alt=""></i>IndX</a>
+<div class="nav"><button class="btn ghost" id="prev">←</button><span class="count" id="count"></span><button class="btn ghost" id="next">→</button>
+<button class="btn ghost" id="nt">Speaker notes (N)</button><a class="btn ghost" href="report.html">Report</a><a class="btn" href="IndX-Pitch-Deck.pdf" download>Download PDF</a></div></div>
+<div class="stage"><div class="frame" id="frame">
+
+<div class="slide" data-note="Hi, I'm building IndX. Everyone thinks they can pick stocks better than the next person, but nobody keeps score. IndX is a weekly league on Solana: you build an ETF from real tokenized stocks, put in a $5 ticket, and if your ETF beats the median you get paid. Whatever happens, your stocks come back. It's live on devnet today, on Android and in the browser.">
+<div class="label">IndX · October 2026</div>
+<h1>Build an ETF.<br>Beat the median.<br>Get paid.</h1>
+<p style="max-width:820px;margin-top:28px">A weekly stock-ETF league on Solana. Real tokenized stocks, a $5 ticket, and your stocks always come back.</p>
+<div class="foot"><span>Live on Solana devnet · Android + web</span><span>indx · pitch</span></div></div>
+
+<div class="slide" data-note="Stock picking is the most popular skill game nobody scores. If you trade on a broker you compete against nothing: in a bull market everyone looks smart. Prediction markets let you back a view, but on one event, and you lose the whole stake. Paper simulators have no stakes at all. And beating the market is genuinely hard: 79% of active large-cap funds trailed the S&P 500 in 2025. That's exactly what makes it worth scoring.">
+<div class="label">The problem</div><h2>Stock picking is a skill game<br>with no scoreboard.</h2>
+<div class="g g3">
+<div class="c"><h3>Brokers</h3><p>Your P&amp;L against nothing. In a rally everyone looks smart.</p></div>
+<div class="c"><h3>Prediction markets</h3><p>One event, not a portfolio, and the whole stake is gone if you're wrong.</p></div>
+<div class="c"><h3>Simulators</h3><p>Paper money. No stakes, no ownership, no reason to care.</p></div></div>
+<div class="c" style="margin-top:18px;display:flex;align-items:center;gap:24px"><b style="margin:0">79%</b><span>of active large-cap US funds underperformed the S&amp;P 500 in 2025 (SPIVA). Beating a benchmark is rare and measurable, which makes it a fair game.</span></div>
+<div class="foot"><span>Source: S&amp;P DJI SPIVA U.S. year-end 2025</span><span>2</span></div></div>
+
+<div class="slide" data-note="Why now? Because stocks are now on-chain, and mostly on Solana. Tokenized stocks went from under a billion dollars in April to between 2.5 and 3 billion in distributed value this year. xStocks passed 3 billion in on-chain volume within six months, and in July Solana did about 82% of all tokenized stock trading. On the demand side, prediction markets did 44 to 64 billion last year, and fantasy reaches 57 million players in North America. People clearly pay to back a view.">
+<div class="label">Why now</div><h2>Real stocks are now tokens,<br>and they trade on Solana.</h2>
+<div class="g g4">
+<div class="c"><b>$2.5–3B</b><span>tokenized stocks, 2026 (under $1B in April)</span></div>
+<div class="c"><b>~82%</b><span>Solana's share of tokenized-stock trading, July 2026</span></div>
+<div class="c"><b>$44–64B</b><span>prediction-market volume, 2025</span></div>
+<div class="c"><b>57M</b><span>US and Canadian fantasy players a year</span></div></div>
+<div class="foot"><span>rwa.xyz via Crypto Briefing; Solana Compass; PredictionIndex / KalshiData; FSGA 2025</span><span>3</span></div></div>
+
+<div class="slide" data-note="Here's how it works. Entries open Friday after the last round settles. You pick 3 to 10 tokens and weights, type an amount, and in one approval IndX swaps your USDC into exactly that basket and locks it with a $5 ticket. Or you back someone else's ETF. Entries close Monday, the round runs to Friday, and the program settles on-chain: winners are paid, baskets go back, and nobody has to claim anything.">
+<div class="label">How it works</div><h2>One round a week.</h2>
+<div class="g g4">
+<div class="c"><h3>1 · Build</h3><p>Pick 3–10 tokens, set weights, choose an amount. Or back an ETF you like.</p></div>
+<div class="c"><h3>2 · Lock</h3><p>USDC to basket and $5 ticket in one approval. Entries close Monday.</p></div>
+<div class="c"><h3>3 · Compete</h3><p>Live standings against the round's median, Monday to Friday.</p></div>
+<div class="c"><h3>4 · Get paid</h3><p>Settled on-chain Friday. Winners paid, every basket returned, automatically.</p></div></div>
+<div class="foot"><span>Rules: no token above 50%, crypto ≤ 20%, $10 minimum basket</span><span>4</span></div></div>
+
+<div class="slide" data-note="The mechanism. It's pari-mutuel: IndX never plays against users. The losing tickets form the pot, we take 10%, half for the platform and half for a season pot, and the rest goes to the winners weighted by how close they finished to the best ETF. In a 20-ETF round, the best ETF turns $5 into $23, the last winner gets $5.39. The expected value is $4.75 per ticket, a 5% take, comparable to a sportsbook and well under fantasy's 10 to 15%.">
+<div class="label">The mechanism</div><h2>Pari-mutuel. Weighted by skill.</h2>
+<div class="g g2">
+<div><table>
+<tr><th>20-ETF round</th><th>Payout on $5</th></tr>
+<tr><td>1st</td><td class="up">$23.15 · 4.6×</td></tr><tr><td>2nd</td><td class="up">$15.25 · 3.1×</td></tr>
+<tr><td>3rd</td><td class="up">$11.08 · 2.2×</td></tr><tr><td>5th</td><td class="up">$7.41 · 1.5×</td></tr>
+<tr><td>10th (just above)</td><td class="up">$5.39 · 1.08×</td></tr><tr><td>Below median</td><td class="down">$0</td></tr></table></div>
+<div class="g"><div class="c"><b>$4.75</b><span>expected value of a $5 ticket: a 5% take, half of the 10% (the other half refills thin rounds)</span></div>
+<div class="c"><h3>a = 1 / (1 + r)<sup>6</sup></h3><span>Winners' share falls steeply with distance from the best return. Capped at 100× per ticket.</span></div></div></div>
+<div class="foot"><span>From the IndX settlement engine; evenly spaced returns assumed</span><span>5</span></div></div>
+
+<div class="slide" data-note="Why the median and not top 10? Three reasons. It's market-neutral: in a crash, the half that fell least still wins, so only relative skill counts. About half of ETFs win every week, which keeps beginners playing, where a top-10% format makes 90% lose. And your capital is never at risk: the basket is your ETF and comes back with whatever it gained or lost, exactly as if you'd held it. The $5 is a cheap weekly option on proving you picked better.">
+<div class="label">Why the median</div><h2>Half the field wins,<br>whatever the market does.</h2>
+<div class="g g3">
+<div class="c"><h3>Market-neutral</h3><p>The line is the field, not zero. Only relative skill counts.</p></div>
+<div class="c"><h3>~50% win weekly</h3><p>vs ~10% in top-N formats. Beginners stay; skill still pays steeply.</p></div>
+<div class="c"><h3>Capital returned</h3><p>Your basket comes back with its gains or losses. Only $5 is at stake.</p></div></div>
+<div class="foot"><span>Identical baskets merge into one team: no splitting one idea into many entries</span><span>6</span></div></div>
+
+<div class="slide" data-note="This is all built and working on devnet: an Anchor program with escrowed baskets and on-chain settlement, a keeper that runs rounds by itself, a server that plans and checks every transaction before you sign, and an Android app. You can sign in with Seed Vault, a wallet app, or Google, email and passkeys through Privy. Build is one tap, from USDC to a locked basket. There are 55 automated tests including full rounds.">
+<div class="label">Product</div><h2>Built and live on devnet.</h2>
+<div class="g g3">
+<div class="c"><h3>On-chain league</h3><p>Anchor program: escrowed baskets, settlement, claims, voids, season pot. Conservation checked on-chain.</p></div>
+<div class="c"><h3>Autonomous keeper</h3><p>Opens, prices, settles and pays rounds. Winners and baskets arrive with nothing to claim.</p></div>
+<div class="c"><h3>Android app</h3><p>Seed Vault, wallet apps, Google/email/passkey (Privy). One-tap build, live standings, @tags.</p></div></div>
+<div class="g g3" style="margin-top:18px"><div class="c"><b>55</b><span>automated tests, full rounds on LiteSVM</span></div><div class="c"><b>1 tap</b><span>USDC to locked basket and ticket</span></div><div class="c"><b>3</b><span>surfaces: APK, web app, API</span></div></div>
+<div class="foot"><span>github.com/NECOKIZZ/IND-X</span><span>7</span></div></div>
+
+<div class="slide" data-note="Built for the Seeker. On a Seeker the main button is Continue with Seed Vault. And SKR is in the game: it's a basket asset in the crypto slice, priced live from Jupiter, so Seeker owners can back their own ecosystem against Apple and Nvidia. Next we want SKR holder perks, a lower creator fee or a bigger pot share, verified on-chain with the Seeker Genesis Token, and a dApp Store listing.">
+<div class="label">Solana Mobile</div><h2>Built for the Seeker.</h2>
+<div class="g g3">
+<div class="c"><h3>Seed Vault first</h3><p>One-tap sign-in through Mobile Wallet Adapter on Seeker.</p></div>
+<div class="c"><h3>SKR in your ETF</h3><p>SKR is a basket asset in the crypto slice, priced live by Jupiter.</p></div>
+<div class="c"><h3>Next: SKR perks</h3><p>Lower fees or a bigger pot share for SKR holders, checked against the Seeker Genesis Token. dApp Store listing.</p></div></div>
+<div class="foot"><span>Seeker: 150,000 preorders (Solana Mobile)</span><span>8</span></div></div>
+
+<div class="slide" data-note="Competition. Brokers give you ownership but no competition and all your capital at risk. Prediction markets and fantasy give you competition but no ownership, and you lose the stake. Simulators have no stakes. On-chain index protocols let you build baskets but there's no game. IndX sits in the one cell nobody occupies: real assets you hold yourself, a weekly competition, and only five dollars at risk.">
+<div class="label">Competition</div><h2>Ownership + competition + bounded risk.</h2>
+<table>
+<tr><th></th><th>Real assets</th><th>Compete</th><th>At risk</th><th>On-chain</th></tr>
+<tr><td>Robinhood / brokers</td><td>Yes</td><td>No</td><td>Everything</td><td>No</td></tr>
+<tr><td>Polymarket / Kalshi</td><td>No</td><td>Events</td><td>Full stake</td><td>Partly</td></tr>
+<tr><td>DraftKings / fantasy</td><td>No</td><td>Athletes</td><td>Entry fee</td><td>No</td></tr>
+<tr><td>Simulators</td><td>No</td><td>Yes</td><td>Nothing</td><td>No</td></tr>
+<tr><td>On-chain index protocols</td><td>Yes</td><td>No</td><td>Everything</td><td>Yes</td></tr>
+<tr><td><b>IndX</b></td><td class="up"><b>Yes, self-custody</b></td><td class="up"><b>Weekly</b></td><td class="up"><b>$5</b></td><td class="up"><b>Yes</b></td></tr></table>
+<div class="foot"><span>October 2026</span><span>9</span></div></div>
+
+<div class="slide" data-note="Business model. The league take is 5% of losing tickets to the platform, about 12 and a half cents an entry. On mainnet we add a small Jupiter routing fee on the swap into the basket, about 10 cents on a $50 basket. At 100,000 weekly entries that's about 1.2 million a year, before premium leagues and sponsored seasons. 100,000 a week is a small fraction of fantasy's 57 million players.">
+<div class="label">Business model</div><h2>A small take, many rounds.</h2>
+<div class="g g2">
+<div><table><tr><th>Stream</th><th>Per entry</th></tr>
+<tr><td>League take (5% of losing tickets)</td><td>≈ $0.125</td></tr><tr><td>Swap routing, 0.2% on $50 (mainnet)</td><td>≈ $0.10</td></tr>
+<tr><td>Premium leagues ($25 / $100)</td><td>scales</td></tr><tr><td>Sponsored seasons</td><td>per season</td></tr></table></div>
+<div><table><tr><th>Weekly entries</th><th>Annual revenue</th></tr>
+<tr><td>10,000</td><td>≈ $117K</td></tr><tr><td>100,000</td><td>≈ $1.17M</td></tr><tr><td>1,000,000</td><td>≈ $11.7M</td></tr></table></div></div>
+<div class="foot"><span>Assumes $5 tickets, half losing, $50 average basket, 52 rounds</span><span>10</span></div></div>
+
+<div class="slide" data-note="Go to market. Start with Seeker owners and the Solana community through the dApp Store: they already hold wallets and tokenized stocks are native to their chain. Creators are the growth loop: they earn 10% of what their backers win, so good pickers bring their audiences. And the median format works from just four ETFs, with the season pot topping up thin early rounds.">
+<div class="label">Go to market</div><h2>Seeker first. Creators as the loop.</h2>
+<div class="g g3">
+<div class="c"><h3>Seeker + dApp Store</h3><p>Wallet-native users, on the chain where tokenized stocks trade.</p></div>
+<div class="c"><h3>Creator economy</h3><p>Creators earn 10% of backers' winnings and up to 2% when people buy their ETF. Pickers bring audiences.</p></div>
+<div class="c"><h3>Cold-start proof</h3><p>Rounds work from 4 ETFs; the season pot tops up thin rounds.</p></div></div>
+<div class="foot"><span>Shareable ETF cards and @tags turn picks into posts</span><span>11</span></div></div>
+
+<div class="slide" data-note="The risks, honestly. Regulation is the big one: depending on the country, a paid contest on stock prices can look like gaming or a securities product, and xStocks aren't offered to US persons. So we launch where tokenized stocks are already offered, geofence, and get legal review before mainnet. Prices: multiple samples, published inputs anyone can verify, and refunds if a round's prices fail. The contract gets an audit before mainnet.">
+<div class="label">Risks</div><h2>What could go wrong.</h2>
+<table><tr><th>Risk</th><th>Mitigation</th></tr>
+<tr><td>Regulation (gaming / securities; xStocks not for US persons)</td><td>Launch where xStocks are offered; geofence; legal review pre-mainnet; pari-mutuel, no house risk</td></tr>
+<tr><td>Price integrity</td><td>Multiple samples; Pyth + Jupiter; published inputs anyone can verify; void and refund</td></tr>
+<tr><td>Smart-contract risk</td><td>On-chain conservation checks; 55 tests; external audit before mainnet</td></tr>
+<tr><td>Liquidity on large baskets</td><td>Server quotes with slippage headroom; player-sized baskets</td></tr></table>
+<div class="foot"><span>Full analysis in the research report</span><span>12</span></div></div>
+
+<div class="slide" data-note="The roadmap. Today the league is live on devnet with the Android app. This quarter: audit, mainnet beta with real xStocks and USDC through Jupiter, and the dApp Store. Next quarter: seasons, where the top of the leaderboard shares the season pot every 30 rounds, SKR perks, and friend leagues. Then premium leagues and sponsored seasons.">
+<div class="label">Roadmap</div><h2>Devnet league to mainnet season.</h2>
+<div class="g g4">
+<div class="c"><h3>Now</h3><p>Devnet league, APK, web, Seed Vault + Privy, SKR asset</p></div>
+<div class="c"><h3>Q4 2026</h3><p>Audit, mainnet beta (xStocks + USDC via Jupiter), dApp Store</p></div>
+<div class="c"><h3>Q1 2027</h3><p>Seasons: leaderboard shares the season pot every 30 rounds. SKR perks, friend leagues</p></div>
+<div class="c"><h3>2027</h3><p>Premium and sponsored leagues; new asset classes as they tokenize</p></div></div>
+<div class="foot"><span></span><span>13</span></div></div>
+
+<div class="slide" data-note="That's IndX: build an ETF, beat the median, get paid, and keep your stocks. You can download the APK and play this week's round on devnet right now. Thank you.">
+<div class="label">IndX</div><h1>Pick better.<br>Prove it every week.</h1>
+<p style="margin-top:28px">Android APK: raw.githubusercontent.com/NECOKIZZ/ind-x/apk/IndX.apk<br>Web: ind-x-app.onrender.com · Code: github.com/NECOKIZZ/IND-X</p>
+<div class="foot"><span>Testnet only. Not investment advice.</span><span>14</span></div></div>
+
+</div></div>
+<div class="notes" id="notes"></div>
+<script>
+const slides=[...document.querySelectorAll('.slide')];let i=0;
+const frame=document.getElementById('frame'),notes=document.getElementById('notes'),count=document.getElementById('count');
+function fit(){const st=document.querySelector('.stage');const s=Math.min((st.clientWidth-8)/1280,(st.clientHeight-8)/720,1.2);frame.style.transform='scale('+s+')';frame.style.margin=(720*(s-1)/2)+'px '+(1280*(s-1)/2)+'px';}
+function show(n){i=Math.max(0,Math.min(slides.length-1,n));slides.forEach((s,k)=>s.classList.toggle('on',k===i));notes.innerHTML='<b>Say:</b> '+slides[i].dataset.note;count.textContent=(i+1)+' / '+slides.length;history.replaceState(null,'','#'+(i+1));}
+document.getElementById('prev').onclick=()=>show(i-1);document.getElementById('next').onclick=()=>show(i+1);
+document.getElementById('nt').onclick=()=>{document.body.classList.toggle('shownotes');fit();};
+addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')show(i+1);if(e.key==='ArrowLeft')show(i-1);if(e.key==='n'||e.key==='N'){document.body.classList.toggle('shownotes');fit();}});
+let x0=null;addEventListener('touchstart',e=>x0=e.touches[0].clientX);addEventListener('touchend',e=>{if(x0===null)return;const d=e.changedTouches[0].clientX-x0;if(Math.abs(d)>40)show(i+(d<0?1:-1));x0=null;});
+addEventListener('resize',fit);
+// Print: every slide with its notes on its own page.
+addEventListener('beforeprint',()=>{slides.forEach(s=>{if(s.parentElement.classList.contains('pslide'))return;const w=document.createElement('div');w.className='pslide';s.before(w);w.append(s);const n=document.createElement('div');n.className='pnote';n.innerHTML='<b style="color:#C5DAC5">Say:</b> '+s.dataset.note;w.append(n);});});
+show((parseInt(location.hash.slice(1))||1)-1);fit();
+</script></body></html>

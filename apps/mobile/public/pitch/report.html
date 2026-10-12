@@ -1,0 +1,230 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IndX report</title><link rel="icon" href="logo.svg">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css">
+<style>
+.bar{position:sticky;top:0;z-index:5;background:rgba(11,12,14,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.bar div{max-width:820px;margin:0 auto;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+article{max-width:820px;margin:0 auto;padding:24px 20px 80px}
+section{padding:44px 0;border-bottom:1px solid var(--line)}
+h1{font-size:clamp(34px,6vw,52px);line-height:1.05;letter-spacing:-1.8px;font-weight:300;margin:12px 0}
+h2{font-size:30px;letter-spacing:-1px;font-weight:400;margin:6px 0 16px}
+h3{font-size:18px;font-weight:500;margin:22px 0 6px}
+p,li{font-size:16px;line-height:26px;color:rgba(238,242,237,.82)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:18px 0}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:18px}
+.stat b{display:block;font-size:30px;font-weight:300;letter-spacing:-1px;color:var(--sage)}
+.stat span{font-size:13px;line-height:18px;color:var(--muted)}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:18px 20px;margin:16px 0}
+.src{font-size:12px;color:var(--faint);line-height:18px}
+code{font-family:'Geist Mono',ui-monospace,monospace;font-size:14px;color:var(--sage)}
+@media print{@page{size:A4;margin:0}.bar{display:none}section{break-after:page;border:0;padding:56px 0 24px}section:last-child{break-after:auto}article{padding:0 48px}body{background:#0B0C0E;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body>
+<div class="bar"><div><a class="mark" href="./"><i><img src="logo.svg" alt=""></i>IndX</a><span style="display:flex;gap:8px"><a class="btn ghost" href="deck.html">Deck</a><a class="btn" href="IndX-Research-Report.pdf" download>Download PDF</a></span></div></div>
+<article>
+
+<section>
+<div class="label">Research report · October 2026</div>
+<h1>The IndX thesis</h1>
+<p>Stock picking is the most popular skill game nobody keeps score of. IndX turns it into a weekly league on Solana. You build a basket of 3–10 tokenized stocks, lock it, and enter with a $5 ticket. When the week ends, every ETF above the median return wins the tickets of the ETFs below it, and every player gets their stocks back.</p>
+<div class="stats">
+<div class="stat"><b>79%</b><span>of active large-cap US funds trailed the S&amp;P 500 in 2025. Beating a benchmark is hard, so it is worth scoring.</span></div>
+<div class="stat"><b>$44–64B</b><span>traded on prediction markets in 2025. People pay to back a view and prove they were right.</span></div>
+<div class="stat"><b>~82%</b><span>of tokenized-stock trading happened on Solana in July 2026.</span></div>
+<div class="stat"><b>$5</b><span>is all a player risks each week. The stocks always come back.</span></div>
+</div>
+<h3>In this report</h3>
+<ol><li>The problem</li><li>Why now</li><li>How IndX works</li><li>The mechanism, in numbers</li><li>Why the median</li><li>Product: what is built</li><li>Competition</li><li>Business model</li><li>Solana Mobile and SKR</li><li>Risks and how we handle them</li><li>Roadmap</li><li>Sources</li></ol>
+<p class="src">Testnet only (Solana devnet). Not investment advice. Figures are the best public numbers we found as of October 2026. Where sources disagree, we give the range.</p>
+</section>
+
+<section>
+<div class="label">1 · The problem</div>
+<h2>Picking stocks is lonely, and the scoreboard is broken.</h2>
+<p>Millions of people have a view on which companies will do well. Today they can do one of three things with it, and none of them is a game:</p>
+<ul>
+<li><b>Trade alone.</b> A brokerage app shows your P&amp;L against nothing. In a rising market everyone looks smart; in a falling one everyone looks wrong. Nobody can tell skill from the tide.</li>
+<li><b>Bet on events.</b> Prediction markets let you back a view on a single outcome, but not on a portfolio, and the money you stake is gone if you are wrong.</li>
+<li><b>Play paper-money simulators.</b> No stakes, no ownership, no reason to care.</li>
+</ul>
+<p>Meanwhile the professionals mostly lose to the index: in 2025, <b>79%</b> of actively managed large-cap US equity funds underperformed the S&amp;P 500, up from 65% in 2024. Beating a benchmark is rare and measurable, which is exactly what makes a good competition.</p>
+<div class="box"><b>The gap:</b> there is no simple, fair, on-chain way to compete with a real portfolio, against other people, every week, where skill (relative performance) is what gets rewarded and your capital is never on the line.</div>
+<p class="src">S&amp;P Dow Jones Indices, SPIVA U.S. Scorecard, year-end 2025.</p>
+</section>
+
+<section>
+<div class="label">2 · Why now</div>
+<h2>Real stocks are now tokens, and they live on Solana.</h2>
+<div class="stats">
+<div class="stat"><b>$2.5–3B</b><span>tokenized stocks, distributed value, mid-to-late 2026 (under $1B in April 2026)</span></div>
+<div class="stat"><b>$3B+</b><span>xStocks on-chain volume by 19 Jan 2026, six months after launch</span></div>
+<div class="stat"><b>~82%</b><span>Solana's share of tokenized-stock trading, July 2026</span></div>
+<div class="stat"><b>200K</b><span>on-chain tokenized-stock holders on Solana, 2026</span></div>
+</div>
+<p>Until 2025 a stock-picking game on-chain was impossible: there were no stocks on-chain. Backed's xStocks (launched mid-2025, now part of Kraken) brought Apple, Nvidia, Tesla, the S&amp;P 500 and others to Solana as SPL tokens that track the real share price, dividends included. They trade around the clock and settle in seconds, and a smart contract can hold them in escrow.</p>
+<p>Three things now line up:</p>
+<ul>
+<li><b>The assets exist.</b> xStocks and other tokenized equities give a basket real, priceable components.</li>
+<li><b>Demand for skill-based staking is proven.</b> Prediction markets traded roughly $44–64B in 2025, about half each on Kalshi and Polymarket. US and Canadian fantasy sports reach about 57 million players a year.</li>
+<li><b>Crypto is going mobile.</b> Solana Mobile's Seeker drew 150,000 preorders and ships with Seed Vault and the SKR token, giving a mobile-first app a native wallet and distribution through the dApp Store.</li>
+</ul>
+<p class="src">rwa.xyz via Crypto Briefing and secondary reports (tokenized stocks); Solana Foundation xStocks case study (Jan 2026); Solana Compass (July 2026 share, holders); Odaily/PredictionIndex, KalshiData, Trade the Outcome (prediction markets 2025); FSGA/Angus Reid 2025 (fantasy players); Solana Mobile via The Block and Forklog (Seeker).</p>
+</section>
+
+<section>
+<div class="label">3 · How IndX works</div>
+<h2>One round a week. Stocks in, stocks back.</h2>
+<table>
+<tr><th>When</th><th>What happens</th></tr>
+<tr><td>Fri evening → Mon</td><td><b>Entries open.</b> Build an ETF: pick 3–10 tokens (stocks and funds, crypto capped at 20%, no token above 50%), set weights, choose an amount. IndX swaps your USDC into exactly that basket and locks it with a $5 ticket, in one approval. Or <b>back</b> someone else's ETF with a ticket.</td></tr>
+<tr><td>Mon 13:30 UTC</td><td><b>Entries close.</b> The keeper records start prices for every token in the round.</td></tr>
+<tr><td>Mon → Fri</td><td><b>Live.</b> Standings move with the market. Each ETF's return is compared with the round's median return.</td></tr>
+<tr><td>Fri 20:00 UTC</td><td><b>Settle.</b> End prices are recorded and the program settles on-chain. Winners are paid and every basket goes back to its owner automatically, with nothing to claim. The next round opens.</td></tr>
+</table>
+<h3>Rules that keep it fair</h3>
+<ul>
+<li><b>Same basket, same team.</b> Two creators who build the same basket at the same weights join one team as co-creators, so nobody can split one idea into many entries.</li>
+<li><b>Creators earn from backers.</b> A creator earns 10% of what their backers win, and can set a fee of up to 2% when people buy their ETF.</li>
+<li><b>Verifiable.</b> The settlement inputs (prices, entries) are published, and anyone can recompute the result (<code>/v1/rounds/:id/verify</code>).</li>
+</ul>
+</section>
+
+<section>
+<div class="label">4 · The mechanism, in numbers</div>
+<h2>Pari-mutuel, weighted by how far above the median you finish.</h2>
+<p>IndX never plays against its users. Winners are paid only from the tickets of ETFs that finished below the median.</p>
+<ol>
+<li><b>Rank.</b> Every ETF's return over the round is measured; the median return is the line.</li>
+<li><b>Pot.</b> The losing tickets form the pot. A 10% take is removed: half goes to the platform, half to a season pot.</li>
+<li><b>Split.</b> The pot goes to winning ETFs, weighted by accuracy <code>a = 1 / (1 + r)<sup>6</sup></code>, where <code>r</code> is how far an ETF is from the best return relative to the median's distance. The best ETF has weight 1; one just above the line has about 1/64. A cap of 100× per ticket bounds any single payout.</li>
+<li><b>Thin rounds.</b> If a pot is below 5% of winning stakes, the season pot tops it up.</li>
+</ol>
+<h3>Worked example: 20 ETFs, one $5 ticket each</h3>
+<p>10 finish below the median, so the losing stakes are $50. The take is $5 ($2.50 platform, $2.50 season pot) and the pot is $45.</p>
+<table>
+<tr><th>Rank above median</th><th>r</th><th>Weight</th><th>Payout on $5</th><th>Multiple</th></tr>
+<tr><td>1st (best)</td><td>0.0</td><td>1.000</td><td class="up">$23.15</td><td>4.6×</td></tr>
+<tr><td>2nd</td><td>0.1</td><td>0.564</td><td class="up">$15.25</td><td>3.1×</td></tr>
+<tr><td>3rd</td><td>0.2</td><td>0.335</td><td class="up">$11.08</td><td>2.2×</td></tr>
+<tr><td>5th</td><td>0.4</td><td>0.133</td><td class="up">$7.41</td><td>1.5×</td></tr>
+<tr><td>10th (just above)</td><td>0.9</td><td>0.021</td><td class="up">$5.39</td><td>1.08×</td></tr>
+<tr><td>Below the median</td><td>–</td><td>–</td><td class="down">$0</td><td>0×</td></tr>
+</table>
+<p><b>Expected value per ticket: $4.75 on $5, a 5% take</b> (the other 5% funds the season pot, which flows back to players in thin rounds). For comparison, a standard −110 sports bet carries about a 4.5% margin, and fantasy contests commonly take 10–15%.</p>
+<p class="src">Mechanism from the IndX settlement engine (<code>packages/core/src/engine.ts</code>): gamma 6, take 10%, season share 50%, thin-pot floor 5%, cap 100×, creator fee 10%. The example assumes evenly spaced returns.</p>
+</section>
+
+<section>
+<div class="label">5 · Why the median</div>
+<h2>Half the field wins, whatever the market does.</h2>
+<ul>
+<li><b>Market-neutral.</b> The line is the field's own median, not zero. In a crash, the half that fell least still wins; in a rally, rising isn't enough. Only relative skill counts.</li>
+<li><b>A hit rate people come back for.</b> Roughly 50% of ETFs win every round. Top-N formats (top 10% wins) make 90% of players lose each week; the median keeps beginners in the game.</li>
+<li><b>Skill still pays steeply.</b> The accuracy weighting means the best ETF earns about 50× the last winner's gain. Picking well matters a lot more than barely clearing the line.</li>
+<li><b>Capital never at risk.</b> The basket is your ETF. It is escrowed and returned at settlement with all its gains or losses, exactly as if you had held it. Only the $5 ticket is at stake.</li>
+<li><b>Hard to game.</b> Identical baskets merge into one team, entries close before prices are recorded, and returns come from public price feeds.</li>
+</ul>
+<div class="box">For a player, IndX is <b>holding a portfolio you'd hold anyway</b>, plus a cheap weekly option on proving you picked better than everyone else.</div>
+</section>
+
+<section>
+<div class="label">6 · Product: what is built</div>
+<h2>A working league, end to end, on devnet.</h2>
+<table>
+<tr><th>Layer</th><th>What exists</th></tr>
+<tr><td>Program</td><td>Anchor program on Solana devnet (<code>8d88mx…T3uA</code>): rounds, entries, escrowed baskets, on-chain settlement, claims, voids, season pot. Conservation is checked: payouts + platform + season-in = stakes + season-out + bonus.</td></tr>
+<tr><td>Keeper</td><td>Opens rounds, samples prices (Jupiter / Pyth), settles, pays out and returns baskets automatically. Runs one round at a time.</td></tr>
+<tr><td>API</td><td>Plans every transaction server-side and checks it before you sign; the wallet never signs a transaction that would fail. Test desk sells test stocks at live prices.</td></tr>
+<tr><td>Android app</td><td>Expo / React Native: Seed Vault (Mobile Wallet Adapter) on Seeker; Google, email and passkey sign-in with Privy embedded wallets; one-tap Build (USDC to basket and entry in one approval); live standings; ETF charts; @tags; send and receive; test faucet.</td></tr>
+<tr><td>Tests</td><td>55 automated tests, including full rounds on LiteSVM: open, enter, settle, pay out and refund.</td></tr>
+</table>
+<p>Try it: <a href="https://raw.githubusercontent.com/NECOKIZZ/ind-x/apk/IndX.apk">Android APK</a> · <a href="https://ind-x-app.onrender.com">browser</a> · <a href="https://github.com/NECOKIZZ/IND-X">source</a>.</p>
+</section>
+
+<section>
+<div class="label">7 · Competition</div>
+<h2>Nobody else lets you compete with a real portfolio.</h2>
+<table>
+<tr><th></th><th>Real assets you own</th><th>Compete with others</th><th>Capital at risk</th><th>On-chain settlement</th></tr>
+<tr><td>Robinhood / brokers</td><td>Yes</td><td>No</td><td>All of it</td><td>No</td></tr>
+<tr><td>eToro CopyTrader</td><td>Yes (custodial)</td><td>Leaderboards, no stakes</td><td>All of it</td><td>No</td></tr>
+<tr><td>Polymarket / Kalshi</td><td>No</td><td>Yes, on events</td><td>The full stake</td><td>Polymarket only</td></tr>
+<tr><td>DraftKings / fantasy</td><td>No</td><td>Yes, on athletes</td><td>Entry fee</td><td>No</td></tr>
+<tr><td>Stock simulators</td><td>No (paper money)</td><td>Yes</td><td>None</td><td>No</td></tr>
+<tr><td>On-chain index protocols</td><td>Yes</td><td>No</td><td>All of it</td><td>Yes</td></tr>
+<tr><td><b>IndX</b></td><td><b>Yes, self-custodied</b></td><td><b>Yes, weekly</b></td><td><b>$5 ticket only</b></td><td><b>Yes</b></td></tr>
+</table>
+<p>Where the others win: prediction markets have deep liquidity and news-driven engagement; fantasy has decades of habit and sports media; brokers have distribution. IndX's wedge is the intersection none of them occupy: <b>ownership + competition + bounded risk</b>, native to a chain where the stocks already trade.</p>
+</section>
+
+<section>
+<div class="label">8 · Business model</div>
+<h2>A small take on every round, more levers on top.</h2>
+<table>
+<tr><th>Stream</th><th>How</th><th>Per entry (est.)</th></tr>
+<tr><td>League take</td><td>5% of losing tickets to the platform (the other 5% to the season pot)</td><td>≈ $0.125 (½ × $5 × 5%)</td></tr>
+<tr><td>Swap routing (mainnet)</td><td>Jupiter platform fee on the USDC-to-basket swap, e.g. 0.2% on a $50 basket</td><td>≈ $0.10</td></tr>
+<tr><td>Premium leagues</td><td>$25 and $100 tickets, private friend leagues</td><td>scales with ticket</td></tr>
+<tr><td>Sponsored seasons</td><td>Issuers and protocols fund the season pot to feature their assets</td><td>per season</td></tr>
+</table>
+<h3>Sensitivity</h3>
+<table>
+<tr><th>Weekly entries</th><th>Annual take + routing</th><th>Annual ticket volume</th></tr>
+<tr><td>10,000</td><td>≈ $117K</td><td>$2.6M</td></tr>
+<tr><td>100,000</td><td>≈ $1.17M</td><td>$26M</td></tr>
+<tr><td>1,000,000</td><td>≈ $11.7M</td><td>$260M</td></tr>
+</table>
+<p>For scale: 1M weekly entries would be under 2% of the US and Canada's 57 million fantasy players. Creators' buy fees (up to 2%) go to creators, giving the best pickers a reason to bring their audience.</p>
+<p class="src">Estimates assume $5 tickets, half of tickets losing, $50 average basket, 52 rounds a year.</p>
+</section>
+
+<section>
+<div class="label">9 · Solana Mobile and SKR</div>
+<h2>Built for the Seeker.</h2>
+<ul>
+<li><b>Seed Vault first.</b> On a Seeker, "Continue with Seed Vault" is the main sign-in, through Mobile Wallet Adapter. Other Android phones connect Phantom, Solflare or Backpack the same way.</li>
+<li><b>SKR in your ETF.</b> SKR, Solana Mobile's token (<code>SKRbvo6…NPGZhW3</code>, priced live by Jupiter), is a basket asset in the crypto slice. Seeker owners can back their ecosystem against the stock market.</li>
+<li><b>Mobile-native.</b> Swipe tabs, haptics, a one-tap build flow and push notifications for round events. Designed for one-handed use and tested on every phone width down to 280 dp.</li>
+<li><b>Next:</b> SKR-holder perks (a reduced creator fee or a boosted pot share) checked against the wallet's SKR balance and the Seeker Genesis Token, and a dApp Store listing.</li>
+</ul>
+</section>
+
+<section>
+<div class="label">10 · Risks</div>
+<h2>What could go wrong, and what we do about it.</h2>
+<table>
+<tr><th>Risk</th><th>Mitigation</th></tr>
+<tr><td><b>Regulation.</b> A paid contest on securities prices may be treated as gaming or as a securities product, depending on the country. xStocks are not offered to US persons.</td><td>Launch where tokenized stocks are already offered; geofence; legal review before mainnet. The skill-based, pari-mutuel design (no house risk) is deliberate.</td></tr>
+<tr><td><b>Price integrity.</b> A bad price could pick the wrong winners.</td><td>Multiple samples per phase; Pyth and Jupiter sources; published inputs anyone can verify; admin void with refunds if prices fail.</td></tr>
+<tr><td><b>Smart-contract risk.</b> The program holds stakes and baskets.</td><td>Conservation invariants checked on-chain and in 55 tests; an external audit before mainnet; caps per round.</td></tr>
+<tr><td><b>Liquidity.</b> Large baskets in thin xStocks could slip.</td><td>Server-side quotes with slippage headroom, a $10 minimum, and baskets sized by the player.</td></tr>
+<tr><td><b>Cold start.</b> A league needs players.</td><td>A median format works from 4 ETFs; the season pot tops up thin rounds; creators earn from bringing backers.</td></tr>
+</table>
+</section>
+
+<section>
+<div class="label">11 · Roadmap</div>
+<h2>From devnet league to mainnet season.</h2>
+<table>
+<tr><th>When</th><th>Milestone</th></tr>
+<tr><td>Now</td><td>Devnet league live, Android APK, web app, Seed Vault and Privy sign-in, SKR basket asset.</td></tr>
+<tr><td>Q4 2026</td><td>Audit; mainnet beta with real xStocks and USDC via Jupiter; dApp Store listing.</td></tr>
+<tr><td>Q1 2027</td><td>Seasons: the top of the leaderboard shares the season pot every 30 rounds; SKR-holder perks; friend leagues.</td></tr>
+<tr><td>2027</td><td>Premium leagues, sponsored seasons, more asset classes as they tokenize.</td></tr>
+</table>
+</section>
+
+<section>
+<div class="label">12 · Sources</div>
+<h2>Sources</h2>
+<ul class="src" style="font-size:13px;line-height:21px">
+<li>S&amp;P Dow Jones Indices, SPIVA U.S. Scorecard, year-end 2025: spglobal.com/spdji/en/spiva/article/spiva-us-year-end-2025/</li>
+<li>Solana Foundation, xStocks case study (Jan 2026 update): solana.com/news/case-study-xstocks</li>
+<li>Solana Compass, "Solana Tokenized Equities Hit $1.45B in July Volume, Capturing 82%" and "holder count hits 200K"</li>
+<li>Crypto Briefing, "Tokenized stocks' share of total RWA market cap rises to over 15%"; Cointelegraph (DefiLlama RWA); rwa.xyz tokenized stocks (via secondary reports)</li>
+<li>Odaily citing PredictionIndex.xyz and KalshiData; Trade the Outcome, "Prediction Markets in 2025"; DeFi Rate</li>
+<li>FSGA / Angus Reid Group fantasy survey 2025 (via secondary report); IBISWorld and P&amp;S Intelligence US fantasy market estimates</li>
+<li>The Block, "Solana Mobile says SKR token launch is coming in January"; Forklog (Seeker shipping, 150,000 preorders)</li>
+<li>IndX source code: github.com/NECOKIZZ/IND-X (settlement engine, program, tests)</li>
+</ul>
+</section>
+</article></body></html>
