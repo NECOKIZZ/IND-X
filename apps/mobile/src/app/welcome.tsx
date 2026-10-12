@@ -2,7 +2,7 @@
 // ETFs as gradient cards, the pitch, and the sign-in buttons.
 
 import { useState } from "react";
-import { Pressable, useWindowDimensions, View } from "react-native";
+import { Platform, Pressable, useWindowDimensions, View } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { brand, font, space, useColors } from "@/theme";
@@ -102,14 +102,10 @@ export default function Welcome() {
             Privacy Policy
           </Text>
         </Text>
-        {seeker ? (
-          <SignInButton icon="shield" title="Continue with Seed Vault" loading={busy === "wallet"} onPress={() => go("wallet")} />
-        ) : (
-          <>
-            <SignInButton icon="google" title="Continue with Google" loading={busy === "google"} onPress={() => go("google")} />
-            <SignInButton icon="apple" title="Continue with Apple" loading={busy === "apple"} onPress={() => go("apple")} />
-          </>
-        )}
+        <SignInButton icon="google" title="Continue with Google" loading={busy === "google"} onPress={() => go("google")} />
+        {Platform.OS === "android" ? (
+          <SignInButton icon={seeker ? "shield" : "wallet"} title={seeker ? "Continue with Seed Vault" : "Connect a Solana wallet"} kind="secondary" loading={busy === "wallet"} onPress={() => go("wallet")} />
+        ) : null}
         <Pressable onPress={() => router.push("/signin")} hitSlop={8} style={{ alignItems: "center", paddingTop: space.sm }}>
           <Text v="bodyStrong">More options</Text>
         </Pressable>
@@ -118,16 +114,18 @@ export default function Welcome() {
   );
 }
 
-function SignInButton({ icon, title, onPress, loading }: { icon: "google" | "apple" | "shield"; title: string; onPress: () => void; loading?: boolean }) {
+function SignInButton({ icon, title, onPress, loading, kind = "primary" }: { icon: "google" | "shield" | "wallet"; title: string; onPress: () => void; loading?: boolean; kind?: "primary" | "secondary" }) {
   const c = useColors();
+  const bg = kind === "primary" ? c.primary : c.secondary;
+  const fg = kind === "primary" ? c.onPrimary : c.onSecondary;
   return (
     <Pressable
       onPress={onPress}
       disabled={loading}
-      style={({ pressed }) => ({ height: 52, borderRadius: 26, paddingHorizontal: space.md, backgroundColor: c.primary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, opacity: pressed || loading ? 0.85 : 1 })}
+      style={({ pressed }) => ({ height: 52, borderRadius: 26, paddingHorizontal: space.md, backgroundColor: bg, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, opacity: pressed || loading ? 0.85 : 1 })}
     >
-      <Icon name={icon} size={18} color={c.onPrimary} />
-      <Text v="bodyStrong" color={c.onPrimary} numberOfLines={1}>
+      <Icon name={icon} size={18} color={fg} />
+      <Text v="bodyStrong" color={fg} numberOfLines={1}>
         {loading ? "Signing in…" : title}
       </Text>
     </Pressable>

@@ -10,6 +10,7 @@ import { useConfig } from "@/lib/queries";
 import { store } from "./storage";
 import { devWallet } from "./dev";
 import { phantomWallet } from "./phantom";
+import { privyWallet } from "./privyBridge";
 import type { Chain, WalletAdapter, WalletKind } from "./types";
 
 const KIND = "wallet.kind";
@@ -38,6 +39,7 @@ const Ctx = createContext<WalletState | null>(null);
 function makeAdapter(kind: WalletKind, chain: Chain): WalletAdapter {
   if (kind === "dev") return devWallet();
   if (kind === "phantom") return phantomWallet(chain);
+  if (kind === "privy") return privyWallet();
   // Loaded lazily: a native module that only exists in Android builds.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { mwaWallet } = require("./mwa") as typeof import("./mwa");

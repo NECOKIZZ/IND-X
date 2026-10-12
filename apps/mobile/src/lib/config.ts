@@ -12,3 +12,12 @@ export const MAINNET_API_URL = process.env.EXPO_PUBLIC_MAINNET_API_URL ? process
 
 /** Deep-link scheme (app.json "scheme"), used for wallet redirects. */
 export const SCHEME = "indx";
+
+/**
+ * Privy (Google, email and passkey sign-in with an embedded Solana wallet).
+ * The app id and client id are public; the app secret never goes in the app.
+ */
+export const PRIVY_APP_ID = process.env.EXPO_PUBLIC_PRIVY_APP_ID ?? "cmv4tg865001c0flbllafphro";
+export const PRIVY_CLIENT_ID = process.env.EXPO_PUBLIC_PRIVY_CLIENT_ID || undefined;
+/** Where the passkey association lives (/.well-known/assetlinks.json). */
+export const PASSKEY_DOMAIN = "https://ind-x-app.onrender.com";

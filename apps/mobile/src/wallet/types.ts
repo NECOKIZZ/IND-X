@@ -1,4 +1,4 @@
-export type WalletKind = "mwa" | "phantom" | "dev";
+export type WalletKind = "mwa" | "phantom" | "dev" | "privy";
 
 /** A wallet that signs the server's transaction plans (base64 v0 transactions). */
 export interface WalletAdapter {
