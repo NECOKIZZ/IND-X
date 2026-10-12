@@ -14,7 +14,7 @@ import type {
   TxPlan,
   WalletView,
 } from "@indx/core";
-import { API_URL } from "./config";
+import { apiUrl } from "./network";
 
 export interface BasketQuote {
   weights: number[];
@@ -39,7 +39,7 @@ export class ApiError extends Error {
 async function call<T>(path: string, body?: unknown, method?: string): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, {
+    res = await fetch(`${apiUrl()}${path}`, {
       method: method ?? (body === undefined ? "GET" : "POST"),
       headers: body === undefined ? undefined : { "content-type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
