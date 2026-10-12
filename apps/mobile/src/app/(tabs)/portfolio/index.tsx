@@ -18,7 +18,9 @@ import { Avatar } from "@/components/Avatar";
 import { Icon, type IconName } from "@/components/Icon";
 import { useToast } from "@/components/Toast";
 import { useTxAction } from "@/components/TxAction";
-import { Button, Card, Divider, Empty, ErrorView, Label, Num, Pill, Row, Screen, SectionTitle, Skeleton, Text } from "@/components/ui";
+import { Button, Card, Divider, Empty, ErrorView, Label, Num, Pill, Row, Screen, SectionTitle, Segmented, Skeleton, Text } from "@/components/ui";
+import { useQueryClient } from "@tanstack/react-query";
+import { mainnetAvailable, setNetwork, useNetwork, type Network } from "@/lib/network";
 
 const STATE: Record<WalletEntryView["state"], string> = {
   entered: "Entered",
@@ -93,6 +95,52 @@ function GlassPill({ label, value, children }: { label: string; value?: string; 
         {label}
       </Text>
       {value !== undefined ? <Text v="smallStrong">{value}</Text> : <Text v="smallStrong">{children}</Text>}
+    </View>
+  );
+}
+
+/** Testnet / mainnet. Each is its own league and money, so switching signs you out. */
+function NetworkSwitch() {
+  const c = useColors();
+  const toast = useToast();
+  const qc = useQueryClient();
+  const network = useNetwork();
+  const { disconnect } = useWallet();
+  const choose = async (n: Network) => {
+    if (n === network) return;
+    if (n === "mainnet" && !mainnetAvailable) {
+      toast("Mainnet launches soon. Keep playing on testnet for now.", "info");
+      return;
+    }
+    try {
+      await disconnect();
+      await setNetwork(n);
+      qc.clear();
+      toast(n === "mainnet" ? "You're on mainnet: real money. Sign in again." : "You're on testnet: test money. Sign in again.", "ok");
+      router.replace("/welcome");
+    } catch (e) {
+      toast((e as Error).message, "error");
+    }
+  };
+  return (
+    <View style={{ marginTop: space.lg, gap: space.sm }}>
+      <Row style={{ justifyContent: "space-between" }}>
+        <Label>Network</Label>
+        <Text v="small" color={network === "mainnet" ? c.text : c.up}>
+          {network === "mainnet" ? "Real money" : "Test money only"}
+        </Text>
+      </Row>
+      <Segmented<Network>
+        value={network}
+        onChange={choose}
+        options={[
+          { value: "testnet", label: "Testnet" },
+          { value: "mainnet", label: mainnetAvailable ? "Mainnet" : "Mainnet · soon" },
+        ]}
+      />
+      <Text v="small" color={c.textFaint}>
+        Switching network signs you out. Testnet and mainnet have separate leagues and balances.
+      </Text>
     </View>
   );
 }
@@ -203,6 +251,8 @@ export default function Portfolio() {
           <Text v="smallStrong" color={losses ? c.down : c.text}>{` ${losses}L`}</Text>
         </GlassPill>
       </Row>
+
+      <NetworkSwitch />
 
       <SectionTitle title="This round" />
       {live.length ? live.map((e) => <EntryCard key={e.roundId} e={e} />) : <Empty title="Not in this round" body="Build an ETF or back someone's." action={<Button small title="Build an ETF" onPress={() => router.push("/create")} />} />}

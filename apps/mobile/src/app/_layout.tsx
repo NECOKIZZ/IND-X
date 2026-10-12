@@ -11,6 +11,7 @@ import { WalletProvider, useWallet } from "@/wallet/WalletProvider";
 import { useNotifications } from "@/lib/notifications";
 import { useAppFonts } from "@/theme/fonts";
 import { Splash, useSplash } from "@/components/Splash";
+import { useNetworkReady } from "@/lib/network";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -35,11 +36,12 @@ function App() {
   const c = useColors();
   const nav = scheme === "dark" ? DarkTheme : DefaultTheme;
   const fontsReady = useAppFonts();
+  const networkReady = useNetworkReady();
   const splash = useSplash();
   useEffect(() => {
     if (fontsReady) SplashScreen.hideAsync().catch(() => {});
   }, [fontsReady]);
-  if (!fontsReady) return null;
+  if (!fontsReady || !networkReady) return null;
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
