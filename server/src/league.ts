@@ -72,7 +72,7 @@ export function setLeague(l: League) {
 }
 
 /** Default test basket tokens: a spread of stocks, two ETFs, gold and the crypto slice. */
-export const TEST_SYMBOLS = ["AAPLx", "MSFTx", "NVDAx", "GOOGLx", "AMZNx", "METAx", "TSLAx", "NFLXx", "COINx", "PLTRx", "SPYx", "QQQx", "GLDx", "cbBTC", "ETH", "SOL", "BNB"];
+export const TEST_SYMBOLS = ["AAPLx", "MSFTx", "NVDAx", "GOOGLx", "AMZNx", "METAx", "TSLAx", "NFLXx", "COINx", "PLTRx", "SPYx", "QQQx", "GLDx", "cbBTC", "ETH", "SOL", "BNB", "SKR"];
 
 /**
  * Create test tokens mirroring mainnet ones (same decimals and token

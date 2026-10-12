@@ -90,6 +90,11 @@
       "symbol": "BNB",
       "mint": "E7pnME8eyX4yR4xwxzLjgVXyCNEiMpoLCzTKgH9XCRdC",
       "priceMint": "9gP2kCy3wA1ctvYWQk75guqXuHfrEomqydHLtcTCqiLa"
+    },
+    {
+      "symbol": "SKR",
+      "mint": "EgX64RzGAXrjotsZUExTgcZbTYiaEokMTpKWVVm8MJox",
+      "priceMint": "SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3"
     }
   ],
   "lookupTable": "48MfcZ8WgZedQfBbMtzak5KGEoHSk3geNGgE5B5pNiBQ"
