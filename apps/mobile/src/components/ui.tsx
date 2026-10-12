@@ -1,4 +1,4 @@
-// UI primitives in the Ind-X style: airy surfaces with hairline borders,
+// UI primitives in the IndX style: airy surfaces with hairline borders,
 // light display type, ink and sage pills, small-caps labels.
 
 import { useState, type ReactNode } from "react";

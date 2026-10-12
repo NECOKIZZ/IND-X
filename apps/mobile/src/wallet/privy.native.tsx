@@ -66,7 +66,7 @@ export function usePrivyLogins(): PrivyLogins | null {
       try {
         await passkeyLogin.loginWithPasskey({ relyingParty: PASSKEY_DOMAIN });
       } catch (e) {
-        // No passkey for Ind-X on this phone yet: make one (unless they cancelled).
+        // No passkey for IndX on this phone yet: make one (unless they cancelled).
         if (/cancel/i.test((e as Error).message)) throw e;
         await passkeySignup.signupWithPasskey({ relyingParty: PASSKEY_DOMAIN });
       }

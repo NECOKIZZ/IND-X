@@ -9,7 +9,7 @@ import { useWallet } from "@/wallet/WalletProvider";
 export default function TabLayout() {
   const c = useColors();
   const { ready, address } = useWallet();
-  // Signed-in only: everything in Ind-X is tied to your wallet.
+  // Signed-in only: everything in IndX is tied to your wallet.
   if (ready && !address) return <Redirect href="/welcome" />;
   return (
     <TopTabs

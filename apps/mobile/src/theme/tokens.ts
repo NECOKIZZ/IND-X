@@ -1,4 +1,4 @@
-// Ind-X design tokens. Every screen reads colors, type and spacing from
+// IndX design tokens. Every screen reads colors, type and spacing from
 // here.
 //
 // Brand palette:
