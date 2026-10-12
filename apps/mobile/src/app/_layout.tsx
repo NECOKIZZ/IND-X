@@ -12,6 +12,7 @@ import { useNotifications } from "@/lib/notifications";
 import { useAppFonts } from "@/theme/fonts";
 import { Splash, useSplash } from "@/components/Splash";
 import { onReload, useNetworkReady } from "@/lib/network";
+import { PrivyRoot } from "@/wallet/privy";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -54,6 +55,7 @@ function App() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
+        <PrivyRoot>
         <WalletProvider>
           <ThemeProvider value={{ ...nav, colors: { ...nav.colors, background: c.bg, card: c.bg, text: c.text, primary: c.text, border: c.border } }}>
             <ToastProvider>
@@ -63,6 +65,7 @@ function App() {
                   <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                   <Stack.Screen name="welcome" options={{ headerShown: false, gestureEnabled: false, animation: "fade" }} />
                   <Stack.Screen name="signin" options={{ presentation: "formSheet", sheetAllowedDetents: [0.5], sheetGrabberVisible: true, headerShown: false }} />
+                  <Stack.Screen name="email" options={{ presentation: "formSheet", sheetAllowedDetents: [0.6], sheetGrabberVisible: true, headerShown: false }} />
                   <Stack.Screen name="send" options={{ presentation: "formSheet", sheetAllowedDetents: [0.92], sheetGrabberVisible: true, headerShown: false }} />
                   <Stack.Screen name="receive" options={{ presentation: "formSheet", sheetAllowedDetents: [0.6], sheetGrabberVisible: true, headerShown: false }} />
                   <Stack.Screen name="tag" options={{ presentation: "formSheet", sheetAllowedDetents: [0.6], sheetGrabberVisible: true, headerShown: false }} />
@@ -83,6 +86,7 @@ function App() {
             </ToastProvider>
           </ThemeProvider>
         </WalletProvider>
+        </PrivyRoot>
       </QueryClientProvider>
     </SafeAreaProvider>
   );

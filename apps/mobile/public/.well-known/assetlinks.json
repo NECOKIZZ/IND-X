@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls", "delegate_permission/common.get_login_creds"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.indx.mobile",
+      "sha256_cert_fingerprints": ["64:B5:01:FC:69:BD:62:9F:E0:1E:0B:13:21:35:F6:88:9C:28:9F:78:7A:B9:82:5A:29:0C:7C:A3:85:C9:BA:C9"]
+    }
+  }
+]
