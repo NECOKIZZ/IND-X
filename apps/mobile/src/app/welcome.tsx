@@ -1,6 +1,7 @@
 // Sign up: our logo and name sitting quietly on top, a fan of the round's
 // ETFs as gradient cards, the pitch, and the sign-in buttons.
 
+import { useState } from "react";
 import { Pressable, useWindowDimensions, View } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,6 +9,7 @@ import { brand, font, space, useColors } from "@/theme";
 import { useAssets, useRound } from "@/lib/queries";
 import { pct } from "@/lib/format";
 import { useSignIn } from "@/wallet/signin";
+import { isSeeker } from "@/lib/device";
 import { EtfCard } from "@/components/EtfCard";
 import { Glow } from "@/components/Glow";
 import { Icon } from "@/components/Icon";
@@ -44,11 +46,14 @@ function useFanCards() {
 export default function Welcome() {
   const c = useColors();
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
+  // The fan takes whatever height is left and scales to fit it.
+  const [fan, setFan] = useState({ w: width, h: 360 });
   const toast = useToast();
   const { signIn, busy } = useSignIn();
   const cards = useFanCards();
-  const fanH = Math.min(400, height * 0.44);
+  const seeker = isSeeker();
+  const scale = Math.max(0.45, Math.min(1, fan.w / 390, fan.h / 380));
   const go = (m: Parameters<typeof signIn>[0]) => signIn(m).catch((e) => toast((e as Error).message, "error"));
 
   return (
@@ -60,21 +65,24 @@ export default function Welcome() {
         </Text>
       </Row>
 
-      <View style={{ height: fanH, alignItems: "center", justifyContent: "center" }} pointerEvents="none">
+      <View
+        style={{ flex: 1, minHeight: 160, alignItems: "center", justifyContent: "center", overflow: "hidden" }}
+        pointerEvents="none"
+        onLayout={(e) => setFan({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
+      >
         <Glow variant={2} style={{ top: "20%", bottom: "20%" }} />
         {cards.map((card, i) => {
           const f = FAN[i];
           const front = i === FAN.length - 1;
-          const scale = Math.min(1, width / 390);
           return (
-            <View key={i} style={{ position: "absolute", transform: [{ translateX: f.x * scale }, { translateY: f.y * scale - 40 }, { rotate: f.r }, { scale }] }}>
+            <View key={i} style={{ position: "absolute", transform: [{ translateX: f.x * scale }, { translateY: (f.y - 40) * scale }, { rotate: f.r }, { scale }] }}>
               <EtfCard name={card.name} legs={card.legs} retPct={card.ret === null ? "—" : pct(card.ret)} theme={(i + 2) % 5} width={front ? 140 : 132} height={front ? 184 : 172} />
             </View>
           );
         })}
       </View>
 
-      <View style={{ flex: 1, paddingHorizontal: space.xl, alignItems: "center" }}>
+      <View style={{ paddingHorizontal: space.xl, paddingTop: space.md, paddingBottom: space.xl, alignItems: "center" }}>
         <Text v="hero" style={{ textAlign: "center", fontSize: 34, lineHeight: 38 }}>
           Gamified ETFs{"\n"}on Solana
         </Text>
@@ -94,8 +102,14 @@ export default function Welcome() {
             Privacy Policy
           </Text>
         </Text>
-        <SignInButton icon="google" title="Continue with Google" loading={busy === "google"} onPress={() => go("google")} />
-        <SignInButton icon="apple" title="Continue with Apple" loading={busy === "apple"} onPress={() => go("apple")} />
+        {seeker ? (
+          <SignInButton icon="shield" title="Continue with Seed Vault" loading={busy === "wallet"} onPress={() => go("wallet")} />
+        ) : (
+          <>
+            <SignInButton icon="google" title="Continue with Google" loading={busy === "google"} onPress={() => go("google")} />
+            <SignInButton icon="apple" title="Continue with Apple" loading={busy === "apple"} onPress={() => go("apple")} />
+          </>
+        )}
         <Pressable onPress={() => router.push("/signin")} hitSlop={8} style={{ alignItems: "center", paddingTop: space.sm }}>
           <Text v="bodyStrong">More options</Text>
         </Pressable>
@@ -104,16 +118,16 @@ export default function Welcome() {
   );
 }
 
-function SignInButton({ icon, title, onPress, loading }: { icon: "google" | "apple"; title: string; onPress: () => void; loading?: boolean }) {
+function SignInButton({ icon, title, onPress, loading }: { icon: "google" | "apple" | "shield"; title: string; onPress: () => void; loading?: boolean }) {
   const c = useColors();
   return (
     <Pressable
       onPress={onPress}
       disabled={loading}
-      style={({ pressed }) => ({ height: 54, borderRadius: 27, backgroundColor: c.primary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, opacity: pressed || loading ? 0.85 : 1 })}
+      style={({ pressed }) => ({ height: 52, borderRadius: 26, paddingHorizontal: space.md, backgroundColor: c.primary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, opacity: pressed || loading ? 0.85 : 1 })}
     >
       <Icon name={icon} size={18} color={c.onPrimary} />
-      <Text v="bodyStrong" color={c.onPrimary}>
+      <Text v="bodyStrong" color={c.onPrimary} numberOfLines={1}>
         {loading ? "Signing in…" : title}
       </Text>
     </Pressable>

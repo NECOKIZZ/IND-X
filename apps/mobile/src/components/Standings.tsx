@@ -2,7 +2,7 @@
 // above it and those below.
 
 import { Fragment } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { router } from "expo-router";
 import type { EtfSummary, RoundView } from "@indx/core";
 import { brand, radius, signColor, space, useColors } from "@/theme";
@@ -30,6 +30,7 @@ export function MedianLine({ value, live }: { value: number | null; live: boolea
 export function EtfRow({ etf, roundId, mine }: { etf: EtfSummary; roundId: string; mine?: boolean }) {
   const c = useColors();
   const tone = etf.standing === "above" ? c.up : etf.standing === "below" ? c.down : c.textFaint;
+  const narrow = useWindowDimensions().width < 360;
   return (
     <Card onPress={() => router.push(`/etf/${roundId}/${etf.key}`)} style={{ marginBottom: space.sm, paddingVertical: space.md + 2, borderColor: mine ? c.text : c.border, borderWidth: mine ? 1 : StyleSheet.hairlineWidth }}>
       <Row gap={space.md}>
@@ -49,17 +50,18 @@ export function EtfRow({ etf, roundId, mine }: { etf: EtfSummary; roundId: strin
               ) : null}
             </Row>
             <Row gap={space.sm}>
-              <Sparkline values={etf.spark} color={signColor(c, etf.retPct)} baseline={c.border} />
+              {narrow ? null : <Sparkline values={etf.spark} color={signColor(c, etf.retPct)} baseline={c.border} />}
               <Num v="bodyStrong" color={signColor(c, etf.retPct)}>
                 {pct(etf.retPct)}
               </Num>
             </Row>
           </Row>
           <Row style={{ justifyContent: "space-between" }}>
-            <Row>
-              <LogoStack legs={etf.legs} size={18} />
-              <Text v="small" color={c.textMuted}>
-                {etf.tickets} {etf.tickets === 1 ? "ticket" : "tickets"} · {short(etf.captain)}
+            <Row style={{ flex: 1, minWidth: 0 }}>
+              <LogoStack legs={etf.legs} size={18} max={narrow ? 3 : 4} />
+              <Text v="small" color={c.textMuted} numberOfLines={1} style={{ flexShrink: 1 }}>
+                {etf.tickets} {etf.tickets === 1 ? "ticket" : "tickets"}
+                {narrow ? "" : ` · ${short(etf.captain)}`}
               </Text>
             </Row>
             {etf.refunded ? (
@@ -67,7 +69,7 @@ export function EtfRow({ etf, roundId, mine }: { etf: EtfSummary; roundId: strin
                 refunded
               </Text>
             ) : etf.ticketPayoutUsd !== null ? (
-              <Row gap={5}>
+              <Row gap={5} style={{ flexShrink: 0, marginLeft: space.xs }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: tone }} />
                 <Text v="small" color={c.textMuted}>
                   $5 → {usd(etf.ticketPayoutUsd)}

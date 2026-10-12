@@ -10,7 +10,7 @@ import type { Chain, WalletAdapter } from "./types";
 
 const TOKEN = "mwa.authToken";
 const ADDRESS = "mwa.address";
-const identity = { name: brand.name, uri: "https://ind-x.app", icon: "favicon.ico" };
+const identity = { name: brand.name, uri: "https://ind-x-app.onrender.com", icon: "favicon.ico" };
 
 export function mwaWallet(chain: Chain): WalletAdapter {
   let authToken: string | null = null;

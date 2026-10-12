@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, TextInput, useWindowDimensions, View } from "react-native";
 import { BlurView } from "expo-blur";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -56,6 +56,9 @@ export default function Create() {
   /** The leg whose weight the keypad is typing, and what's been typed. */
   const [editing, setEditing] = useState<number | null>(null);
   const [typed, setTyped] = useState("");
+  const { width: winW } = useWindowDimensions();
+  const narrow = winW < 400;
+  const tiny = winW < 300;
   const [size, setSize] = useState<number | null>(null);
   const [name, setName] = useState("");
   const [fee, setFee] = useState(100);
@@ -199,24 +202,26 @@ export default function Create() {
             {legs.map((a, i) => (
               <View key={a.mint}>
                 {i ? <Divider /> : null}
-                <Row gap={space.md} style={{ paddingVertical: space.md }}>
-                  <View style={{ width: 4, height: 32, borderRadius: 2, backgroundColor: LEG_COLORS[i % LEG_COLORS.length] }} />
-                  <AssetLogo uri={a.logo} ticker={a.ticker} size={32} />
-                  <View style={{ flex: 1 }}>
-                    <Text v="bodyStrong">{a.ticker}</Text>
-                    <Text v="small" color={c.textMuted}>
+                <Row gap={narrow ? space.sm : space.md} style={{ paddingVertical: space.md }}>
+                  {narrow ? null : <View style={{ width: 4, height: 32, borderRadius: 2, backgroundColor: LEG_COLORS[i % LEG_COLORS.length] }} />}
+                  {tiny ? null : <AssetLogo uri={a.logo} ticker={a.ticker} size={narrow ? 26 : 32} />}
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text v="bodyStrong" numberOfLines={1}>
+                      {a.ticker}
+                    </Text>
+                    <Text v="small" color={c.textMuted} numberOfLines={1}>
                       {a.kind === "crypto" ? "Crypto" : a.name}
                     </Text>
                   </View>
-                  <IconButton icon="minus" size={34} onPress={() => nudge(i, -STEP_BPS)} disabled={(weights[i] ?? 0) <= 0} />
+                  <IconButton icon="minus" size={narrow ? 30 : 34} onPress={() => nudge(i, -STEP_BPS)} disabled={(weights[i] ?? 0) <= 0} />
                   <Pressable
                     accessibilityLabel={`Type the weight of ${a.ticker}`}
                     onPress={() => (setEditing(i), setTyped(""))}
-                    style={{ width: 64, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: editing === i ? c.brand : c.border, backgroundColor: editing === i ? c.upSoft : c.fill }}
+                    style={{ width: tiny ? 48 : narrow ? 54 : 64, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: editing === i ? c.brand : c.border, backgroundColor: editing === i ? c.upSoft : c.fill }}
                   >
                     <Num v="bodyStrong">{bpsToPct(weights[i] ?? 0)}</Num>
                   </Pressable>
-                  <IconButton icon="plus" size={34} onPress={() => nudge(i, STEP_BPS)} />
+                  <IconButton icon="plus" size={narrow ? 30 : 34} onPress={() => nudge(i, STEP_BPS)} />
                 </Row>
               </View>
             ))}

@@ -2,7 +2,7 @@
 // light display type, ink and sage pills, small-caps labels.
 
 import { useState, type ReactNode } from "react";
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text as RNText, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text as RNText, useWindowDimensions, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, space, TAB_BAR_SPACE, type, useColors } from "@/theme";
 import { tap } from "@/lib/haptics";
@@ -10,10 +10,33 @@ import { Icon, type IconName } from "./Icon";
 
 type Variant = Exclude<keyof typeof type, "number">;
 
-export function Text({ v = "body", color, style, children, numberOfLines, selectable }: { v?: Variant; color?: string; style?: StyleProp<TextStyle>; children: ReactNode; numberOfLines?: number; selectable?: boolean }) {
+/**
+ * How much to shrink type on narrow phones: designs are drawn at 390pt wide;
+ * a 320pt phone gets ~82%, never smaller. Big display numbers shrink the most.
+ */
+export function useTypeScale() {
+  const { width } = useWindowDimensions();
+  return Math.max(0.8, Math.min(1, width / 390));
+}
+
+function scaled(style: TextStyle, k: number): TextStyle {
+  if (k >= 1) return style;
+  const big = (style.fontSize ?? 16) >= 24;
+  const f = big ? k : 1 - (1 - k) * 0.5; // body text shrinks half as much
+  return {
+    ...style,
+    fontSize: style.fontSize ? style.fontSize * f : undefined,
+    lineHeight: style.lineHeight ? style.lineHeight * f : undefined,
+    letterSpacing: style.letterSpacing ? style.letterSpacing * f : undefined,
+  };
+}
+
+export function Text({ v = "body", color, style, children, numberOfLines, selectable, onPress }: { v?: Variant; color?: string; style?: StyleProp<TextStyle>; children: ReactNode; numberOfLines?: number; selectable?: boolean; onPress?: () => void }) {
   const c = useColors();
+  const k = useTypeScale();
+  const flat = StyleSheet.flatten([type[v], { color: color ?? c.text }, style]) as TextStyle;
   return (
-    <RNText selectable={selectable} numberOfLines={numberOfLines} style={[type[v], { color: color ?? c.text }, style]}>
+    <RNText selectable={selectable} numberOfLines={numberOfLines} onPress={onPress} style={scaled(flat, k)}>
       {children}
     </RNText>
   );

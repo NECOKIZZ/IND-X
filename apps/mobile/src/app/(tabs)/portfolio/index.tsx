@@ -1,7 +1,8 @@
 // Portfolio: avatar and @tag, balance with total P&L, send / receive (and
 // test funds on testnet), this round's entry, holdings, history, sign out.
 
-import { Pressable, View } from "react-native";
+import type { ReactNode } from "react";
+import { Pressable, useWindowDimensions, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { router } from "expo-router";
 import type { WalletEntryView } from "@indx/core";
@@ -14,10 +15,10 @@ import { useWallet } from "@/wallet/WalletProvider";
 import { AssetLogo } from "@/components/AssetLogo";
 import { Glow } from "@/components/Glow";
 import { Avatar } from "@/components/Avatar";
-import { Icon } from "@/components/Icon";
+import { Icon, type IconName } from "@/components/Icon";
 import { useToast } from "@/components/Toast";
 import { useTxAction } from "@/components/TxAction";
-import { Button, Card, Divider, Empty, ErrorView, Label, Num, Pill, Row, Screen, SectionTitle, Skeleton, Stat, Text } from "@/components/ui";
+import { Button, Card, Divider, Empty, ErrorView, Label, Num, Pill, Row, Screen, SectionTitle, Skeleton, Text } from "@/components/ui";
 
 const STATE: Record<WalletEntryView["state"], string> = {
   entered: "Entered",
@@ -70,6 +71,32 @@ function EntryCard({ e }: { e: WalletEntryView }) {
   );
 }
 
+function CircleAction({ icon, label, onPress, primary }: { icon: IconName; label: string; onPress: () => void; primary?: boolean }) {
+  const c = useColors();
+  return (
+    <Pressable onPress={onPress} accessibilityLabel={label} style={({ pressed }) => ({ alignItems: "center", gap: 6, opacity: pressed ? 0.75 : 1, minWidth: 64 })}>
+      <View style={{ width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", backgroundColor: primary ? c.primary : c.secondary, borderWidth: 1, borderColor: c.glassBorder }}>
+        <Icon name={icon} size={20} color={primary ? c.onPrimary : c.onSecondary} />
+      </View>
+      <Text v="small" color={c.textMuted} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function GlassPill({ label, value, children }: { label: string; value?: string; children?: ReactNode }) {
+  const c = useColors();
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: radius.pill, borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.scheme === "dark" ? "rgba(238,242,237,0.06)" : "rgba(41,50,52,0.05)" }}>
+      <Text v="small" color={c.textMuted}>
+        {label}
+      </Text>
+      {value !== undefined ? <Text v="smallStrong">{value}</Text> : <Text v="smallStrong">{children}</Text>}
+    </View>
+  );
+}
+
 export default function Portfolio() {
   const c = useColors();
   const toast = useToast();
@@ -77,6 +104,7 @@ export default function Portfolio() {
   const assets = useAssets();
   const { address, kind, disconnect } = useWallet();
   const w = useWalletView(address);
+  const { width } = useWindowDimensions();
 
   if (!address) return <Screen>{null}</Screen>;
   if (w.isLoading) {
@@ -94,7 +122,6 @@ export default function Portfolio() {
   const live = v.entries.filter((e) => e.state === "entered" || e.state === "live");
   const past = v.entries.filter((e) => !(e.state === "entered" || e.state === "live"));
   const losses = v.stats.rounds - v.stats.wins;
-  const pnl = v.stats.netUsd;
 
   return (
     <Screen onRefresh={() => w.refetch()}>
@@ -138,53 +165,43 @@ export default function Portfolio() {
 
       <View style={{ borderRadius: radius.xl, overflow: "hidden", backgroundColor: c.surface, borderWidth: 1, borderColor: c.border }}>
         <Glow variant={1} />
-        <View style={{ padding: space.xl, gap: space.xl }}>
+        <View style={{ padding: width < 360 ? space.lg : space.xl, gap: space.lg }}>
           <View>
             <Label>{kind === "dev" ? "Total balance · test wallet" : "Total balance"}</Label>
             <Num v="display">{usd(holdings)}</Num>
-            <Row gap={8} style={{ marginTop: 4 }}>
-              <Pill label={`${pnl > 0 ? "▲" : pnl < 0 ? "▼" : ""} ${pnl >= 0 ? "+" : "−"}${usd(Math.abs(pnl))}`.trim()} color={signColor(c, pnl)} bg={pnl > 0 ? c.upSoft : pnl < 0 ? c.downSoft : c.fill} />
-              <Text v="small" color={c.textMuted}>
-                total P&amp;L{v.stats.rounds ? ` · ${v.stats.rounds} ${v.stats.rounds === 1 ? "round" : "rounds"}` : ""}
-              </Text>
-            </Row>
           </View>
-          <Row style={{ justifyContent: "space-between" }}>
-            <Stat label="USDC" value={usd(v.usdc.uiAmount, 0)} />
-            <Stat label="Gas (SOL)" value={v.sol.toFixed(3)} />
-            <View style={{ alignItems: "flex-end" }}>
-              <Label>Record</Label>
-              <Text v="title" style={{ fontSize: 24, lineHeight: 30 }}>
-                <Text v="title" color={c.up} style={{ fontSize: 24, lineHeight: 30 }}>{`${v.stats.wins}W`}</Text>{" "}
-                <Text v="title" color={losses ? c.down : c.text} style={{ fontSize: 24, lineHeight: 30 }}>{`${losses}L`}</Text>
-              </Text>
-            </View>
+          {/* Send, receive, and test funds on testnet only */}
+          <Row style={{ justifyContent: "space-around" }}>
+            <CircleAction icon="send" label="Send" primary onPress={() => router.push("/send")} />
+            <CircleAction icon="receive" label="Receive" onPress={() => router.push("/receive")} />
+            {config.data?.faucet ? (
+              <CircleAction
+                icon="flask"
+                label="Test funds"
+                onPress={async () => {
+                  try {
+                    const r = await api.faucet(address);
+                    success();
+                    toast(`+${r.usdc} test USDC${r.sol ? ` and ${r.sol} SOL for network fees` : ""}`, "ok");
+                    await w.refetch();
+                  } catch (e) {
+                    toast((e as Error).message, "error");
+                  }
+                }}
+              />
+            ) : null}
           </Row>
         </View>
       </View>
 
-      {/* Send, receive, and test funds on testnet only */}
-      <Row style={{ marginTop: space.md }}>
-        <Button small title="Send" style={{ flex: 1 }} onPress={() => router.push("/send")} />
-        <Button small kind="secondary" title="Receive" style={{ flex: 1 }} onPress={() => router.push("/receive")} />
-        {config.data?.faucet ? (
-          <Button
-            small
-            kind="secondary"
-            title="Test funds"
-            style={{ flex: 1 }}
-            onPress={async () => {
-              try {
-                const r = await api.faucet(address);
-                success();
-                toast(`+${r.usdc} test USDC${r.sol ? ` and ${r.sol} SOL for network fees` : ""}`, "ok");
-                await w.refetch();
-              } catch (e) {
-                toast((e as Error).message, "error");
-              }
-            }}
-          />
-        ) : null}
+      {/* Balances and record, each in its own glass pill */}
+      <Row style={{ marginTop: space.md, flexWrap: "wrap" }} gap={space.sm}>
+        <GlassPill label={kind === "dev" ? "Test USDC" : "USDC"} value={usd(v.usdc.uiAmount)} />
+        <GlassPill label="Gas" value={`${v.sol.toFixed(3)} SOL`} />
+        <GlassPill label="Record">
+          <Text v="smallStrong" color={c.up}>{`${v.stats.wins}W`}</Text>
+          <Text v="smallStrong" color={losses ? c.down : c.text}>{` ${losses}L`}</Text>
+        </GlassPill>
       </Row>
 
       <SectionTitle title="This round" />
