@@ -15,6 +15,7 @@ import { useAssets, useConfig, useRound, useWalletView } from "@/lib/queries";
 import { api } from "@/lib/api";
 import { setTabBarHidden } from "@/lib/chrome";
 import { bpsToPct, pct, usd } from "@/lib/format";
+import { closedReason } from "@/lib/closed";
 import { tap } from "@/lib/haptics";
 import { useWallet } from "@/wallet/WalletProvider";
 import { AssetLogo } from "@/components/AssetLogo";
@@ -112,7 +113,7 @@ export default function Create() {
     return (
       <Screen>
         <PageTitle title="Build" />
-        <Empty title="Entries are closed" body={`Round ${round.data.id} is under way. The next round opens as soon as it's settled.`} action={<Button title="Follow the round" small onPress={() => router.push("/")} />} />
+        <Empty {...closedReason(round.data)} action={<Button title="Follow the live round" small onPress={() => router.push("/")} />} />
       </Screen>
     );
   }

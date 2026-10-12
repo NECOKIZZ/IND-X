@@ -217,10 +217,12 @@ describe("backend end to end", () => {
     const lb = await api<{ wallet: string; netUsd: number }[]>("/v1/leaderboard");
     expect(lb[0].netUsd).toBeGreaterThan(0);
     const hist = await api<{ id: string; top: unknown[] }[]>("/v1/rounds");
-    expect(hist[0].top.length).toBe(3);
+    expect(hist.find((h) => h.id === "1")!.top.length).toBe(3);
 
-    // And the next round opens by itself.
-    expect(await keeper.tick()).toContain("opened round 2");
+    // And the next round opens by itself, as soon as this one has settled.
+    await keeper.tick();
+    expect((await L.reader.config())!.roundCount).toBe(2n);
+    expect((await api<RoundView>("/v1/rounds/current")).id).toBe("2");
   });
 
   it("a round with too few ETFs settles as a void and refunds", async () => {
@@ -288,7 +290,10 @@ describe("backend end to end", () => {
     const round1 = (await L.reader.round(r1))!;
     setTime(round1.entryClose * 1000 + 1000);
     const log: string[] = [...(await keeper.tick())];
-    // The next round opens while round 1 is still live.
+    // The keeper doesn't open the next round while this one is live…
+    expect((await L.reader.config())!.roundCount).toBe(r1);
+    expect((await api<RoundView>("/v1/rounds/current")).id).toBe(r1.toString());
+    // …but one opened by hand runs beside it, and the live one still settles.
     await keeper.openRound({ entryClose: now + 30 * MIN, end: round1.end * 1000 + 30 * MIN });
     const r2 = r1 + 1n;
     setTime(now + MIN);

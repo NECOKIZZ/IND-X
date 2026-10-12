@@ -8,6 +8,7 @@ import { brand, radius, signColor, space, useColors } from "@/theme";
 import { useEtf, useWalletView } from "@/lib/queries";
 import { api } from "@/lib/api";
 import { bpsToPct, pct, short, usd } from "@/lib/format";
+import { closedReason } from "@/lib/closed";
 import { useWallet } from "@/wallet/WalletProvider";
 import { AssetLogo } from "@/components/AssetLogo";
 import { ReturnChart } from "@/components/Chart";
@@ -135,6 +136,10 @@ export default function EtfScreen() {
                 <Label>Entries close in</Label>
                 <Countdown to={e.entryClose} v="bodyStrong" />
               </Row>
+            ) : e.roundPhase === "live" || e.roundPhase === "settling" ? (
+              <Text v="small" color={c.textMuted} style={{ paddingHorizontal: space.sm }}>
+                {closedReason({ id: e.roundId, phase: e.roundPhase, end: e.end }).body}
+              </Text>
             ) : null}
             <Row>
               <Button title="Buy" kind="secondary" style={{ flex: 1 }} onPress={() => router.push({ pathname: "/amount", params: { round: e.roundId, key: e.key, name: e.name } })} />

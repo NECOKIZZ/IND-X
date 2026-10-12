@@ -308,9 +308,14 @@ export async function roundView(L: League, roundId: bigint): Promise<RoundView> 
   };
 }
 
+/** The round people are playing: the oldest one still running, else the latest. */
 export async function currentRoundId(L: League): Promise<bigint> {
   const cfg = await L.reader.config();
   if (!cfg || cfg.roundCount === 0n) throw new HttpError(404, "no rounds yet");
+  for (let id = cfg.roundCount > 3n ? cfg.roundCount - 3n : 1n; id <= cfg.roundCount; id++) {
+    const r = await L.reader.round(id);
+    if (r && r.status !== "settled" && r.status !== "voided") return id;
+  }
   return cfg.roundCount;
 }
 
