@@ -1,7 +1,7 @@
 // Portfolio: avatar and @tag, balance with total P&L, send / receive (and
 // test funds on testnet), this round's entry, holdings, history, sign out.
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Pressable, useWindowDimensions, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { router } from "expo-router";
@@ -148,6 +148,8 @@ export default function Portfolio() {
   const w = useWalletView(address);
   const faucet = useFaucet();
   const { width } = useWindowDimensions();
+  /** null = automatic: open when there's something locked. */
+  const [etfsOpen, setEtfsOpen] = useState<boolean | null>(null);
 
   if (!address) return <Screen>{null}</Screen>;
   if (w.isLoading) {
@@ -165,6 +167,8 @@ export default function Portfolio() {
   const live = v.entries.filter((e) => e.state === "entered" || e.state === "live");
   const past = v.entries.filter((e) => !(e.state === "entered" || e.state === "live"));
   const losses = v.stats.rounds - v.stats.wins;
+  const solAsset = (assets.data ?? []).find((a) => a.ticker === "SOL");
+  const etfsShown = etfsOpen ?? live.length > 0;
 
   return (
     <Screen onRefresh={() => w.refetch()}>
@@ -222,10 +226,8 @@ export default function Portfolio() {
         </View>
       </View>
 
-      {/* Balances and record, each in its own glass pill */}
+      {/* Record */}
       <Row style={{ marginTop: space.md, flexWrap: "wrap" }} gap={space.sm}>
-        <GlassPill label={kind === "dev" ? "Test USDC" : "USDC"} value={usd(v.usdc.uiAmount)} />
-        <GlassPill label="Gas" value={`${v.sol.toFixed(3)} SOL`} />
         <GlassPill label="Record">
           <Text v="smallStrong" color={c.up}>{`${v.stats.wins}W`}</Text>
           <Text v="smallStrong" color={losses ? c.down : c.text}>{` ${losses}L`}</Text>
@@ -234,41 +236,62 @@ export default function Portfolio() {
 
       <NetworkSwitch />
 
-      <SectionTitle title="This round" />
-      {live.length ? live.map((e) => <EntryCard key={e.roundId} e={e} />) : <Empty title="Not in this round" body="Build an ETF or back someone's." action={<Button small title="Build an ETF" onPress={() => router.push("/create")} />} />}
-
-      {v.assets.length ? (
-        <>
-          <SectionTitle title="Holdings" />
-          <Card style={{ paddingVertical: space.xs }}>
-            {v.assets.map((b, i) => {
-              const a = priced.get(b.mint);
-              return (
-                <View key={b.mint}>
-                  {i ? <Divider style={{ marginLeft: 48 }} /> : null}
-                  <Row style={{ justifyContent: "space-between", paddingVertical: space.md }}>
-                    <Row gap={space.md}>
-                      <AssetLogo uri={a?.logo} ticker={a?.ticker ?? b.symbol} size={36} />
-                      <View>
-                        <Text v="bodyStrong">{a?.ticker ?? b.symbol}</Text>
-                        <Text v="small" color={c.textMuted}>
-                          {b.uiAmount.toFixed(4)} {b.symbol}
-                        </Text>
-                      </View>
-                    </Row>
-                    <View style={{ alignItems: "flex-end" }}>
-                      <Num>{usd(b.usd)}</Num>
-                      <Text v="small" color={signColor(c, a?.change24hPct)}>
-                        {pct(a?.change24hPct)}
-                      </Text>
-                    </View>
-                  </Row>
+      {/* Everything in the wallet: USDC, SOL for fees, then stocks */}
+      <SectionTitle title="Wallet" />
+      <Card style={{ paddingVertical: space.xs }}>
+        {[
+          { key: "usdc", logo: null as string | null, ticker: "USDC", detail: kind === "dev" ? "Test USDC" : "USD Coin", amount: `${v.usdc.uiAmount.toFixed(2)} USDC`, value: usd(v.usdc.uiAmount), change: null as number | null },
+          { key: "sol", logo: solAsset?.logo ?? null, ticker: "SOL", detail: "For network fees", amount: `${v.sol.toFixed(4)} SOL`, value: solAsset?.price ? usd(v.sol * solAsset.price) : "", change: solAsset?.change24hPct ?? null },
+          ...v.assets.map((b) => {
+            const a = priced.get(b.mint);
+            return { key: b.mint, logo: a?.logo ?? null, ticker: a?.ticker ?? b.symbol, detail: a?.name ?? b.symbol, amount: `${b.uiAmount.toFixed(4)} ${b.symbol}`, value: usd(b.usd), change: a?.change24hPct ?? null };
+          }),
+        ].map((r, i) => (
+          <View key={r.key}>
+            {i ? <Divider style={{ marginLeft: 48 }} /> : null}
+            <Row style={{ justifyContent: "space-between", paddingVertical: space.md }} gap={space.sm}>
+              <Row gap={space.md} style={{ flex: 1, minWidth: 0 }}>
+                <AssetLogo uri={r.logo} ticker={r.ticker} size={36} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text v="bodyStrong" numberOfLines={1}>
+                    {r.ticker}
+                  </Text>
+                  <Text v="small" color={c.textMuted} numberOfLines={1}>
+                    {r.amount}
+                  </Text>
                 </View>
-              );
-            })}
-          </Card>
-        </>
-      ) : null}
+              </Row>
+              <View style={{ alignItems: "flex-end" }}>
+                <Num>{r.value}</Num>
+                {r.change !== null ? (
+                  <Text v="small" color={signColor(c, r.change)}>
+                    {pct(r.change)}
+                  </Text>
+                ) : (
+                  <Text v="small" color={c.textFaint}>
+                    {r.detail}
+                  </Text>
+                )}
+              </View>
+            </Row>
+          </View>
+        ))}
+      </Card>
+
+      {/* Your ETFs this round, folded away when there are none */}
+      <Pressable onPress={() => setEtfsOpen(!etfsShown)} accessibilityRole="button" accessibilityLabel={etfsShown ? "Hide your ETFs" : "Show your ETFs"}>
+        <Row style={{ justifyContent: "space-between", marginTop: space.xl, marginBottom: space.md }}>
+          <Label>{`Locked ETFs · ${live.length}`}</Label>
+          <View style={{ transform: [{ rotate: etfsShown ? "-90deg" : "180deg" }] }}>
+            <Icon name="back" size={16} color={c.textMuted} />
+          </View>
+        </Row>
+      </Pressable>
+      {etfsShown
+        ? live.length
+          ? live.map((e) => <EntryCard key={e.roundId} e={e} />)
+          : <Empty title="Not in this round" body="Build an ETF or back someone's." action={<Button small title="Build an ETF" onPress={() => router.push("/create")} />} />
+        : null}
 
       {past.length ? (
         <>

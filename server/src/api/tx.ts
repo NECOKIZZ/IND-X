@@ -120,10 +120,19 @@ export async function quoteBasket(L: League, walletStr: string | undefined, legs
     // Size the basket from the requested dollars, then buy whatever the
     // wallet doesn't already cover. Only these amounts are ever locked.
     if (!usd || usd <= 0) throw new HttpError(400, "how much do you want to put in?");
-    const BIG = 10n ** 30n;
-    const fit = fitBasket(legs.map((l) => ({ ...l, raw: BIG })), usd);
+    // Round each leg up so the basket is never worth a hair under the amount
+    // asked for (a $10 basket must count as $10, not $9.99999).
+    const targetE6 = BigInt(Math.round(usd * 1e6));
+    const priceE6 = legs.map((l) => BigInt(Math.max(1, Math.round(l.price * 1e6))));
+    const wants = legs.map((l, i) => {
+      const num = targetE6 * BigInt(l.weightBps) * 10n ** BigInt(l.decimals);
+      const den = 10_000n * priceE6[i];
+      return (num + den - 1n) / den;
+    });
+    const valueUsd = wants.reduce((s, w, i) => s + Number((w * priceE6[i]) / 10n ** BigInt(legs[i].decimals)) / 1e6, 0);
+    const fit = { usd: Math.max(usd, valueUsd) };
     const out = assets.map((a, i) => {
-      const want = fit.amounts[i];
+      const want = wants[i];
       const have = opts.useHeld ? (raws[i] < want ? raws[i] : want) : 0n;
       const buyRaw = want - have;
       const buyUsd = (Number(buyRaw) / 10 ** a.decimals) * legs[i].price;
@@ -218,7 +227,7 @@ export async function planCreate(L: League, req: CreateRequest): Promise<TxPlan>
   const mints = q.legs.map((l) => l.mint);
   const weights = q.weights;
   const minUsd = Number(DEFAULT_RULES.minValue / 10n ** 18n);
-  if (q.usd < minUsd) {
+  if (q.usd + 1e-6 < minUsd) {
     throw new HttpError(409, req.buy ? `put in at least $${minUsd}` : `you need at least $${minUsd} of this basket at these weights (you can lock $${q.maxUsd.toFixed(2)})`);
   }
   // Rules apply to the declared weights (the locked amounts match them to rounding).
@@ -418,14 +427,16 @@ export async function planBuy(L: League, req: BuyRequest): Promise<TxPlan> {
   };
 }
 
-/** Test clusters: SOL for fees and 100 test USDC, once an hour per wallet. */
+/** Test clusters: SOL for fees and 100 test USDC, once a day per wallet. */
 export async function faucet(L: League, walletStr: string): Promise<{ signature: string; usdc: number; sol: number }> {
   if (!L.deployment.faucet || !L.faucet) throw new HttpError(404, "no faucet on this cluster");
   const wallet = pk(walletStr, "wallet");
-  const bucket = Math.floor(Date.now() / 3_600_000);
-  if (!(await L.store.firstTime(`faucet/${walletStr}/${bucket}`))) {
-    const mins = Math.max(1, Math.ceil(((bucket + 1) * 3_600_000 - Date.now()) / 60_000));
-    throw new HttpError(429, `You've had test funds this hour. More in ${mins} min.`);
+  // Once a day per wallet.
+  const DAY = 86_400_000;
+  const bucket = Math.floor(Date.now() / DAY);
+  if (!(await L.store.firstTime(`faucet/${walletStr}/d${bucket}`))) {
+    const mins = Math.max(1, Math.ceil(((bucket + 1) * DAY - Date.now()) / 60_000));
+    throw new HttpError(429, `You've had today's test funds. More in ${mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`}.`);
   }
   const usdc = 100;
   const sol = 0.05;
