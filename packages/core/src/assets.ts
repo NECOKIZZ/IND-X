@@ -1,7 +1,7 @@
 // The tokens a basket can hold on Solana mainnet: xStocks (Backed's
 // tokenized stocks and ETFs, Token-2022, 8 decimals, with a ScaledUiAmount
-// multiplier for dividends and splits) plus a crypto slice: BTC, ETH, SOL and
-// BNB, up to 20% of a basket in total.
+// multiplier for dividends and splits) plus a crypto slice: BTC, ETH, SOL,
+// BNB and SKR (Seeker), up to 20% of a basket in total.
 //
 // Pyth feed ids are the token's own feed (e.g. Crypto.AAPLX/USD) where Pyth
 // has one; the keeper uses Jupiter's price API by default and Pyth Hermes
@@ -101,6 +101,17 @@ export const MAINNET_ASSETS: AssetInfo[] = [
     token2022: false,
     pyth: "2f95862b045670cd22bee3114c39763a4a08beeb663b145d283c31d7d1101c4f",
     logo: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/9gP2kCy3wA1ctvYWQk75guqXuHfrEomqydHLtcTCqiLa/logo.png",
+  },
+  {
+    // Seeker (SKR): Solana Mobile's token. Priced by Jupiter.
+    symbol: "SKR",
+    ticker: "SKR",
+    name: "Seeker",
+    kind: "crypto",
+    mint: "SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3",
+    decimals: 6,
+    token2022: false,
+    logo: "https://r2.solanamobiledappstore.com/skr/seeker.png",
   },
 ];
 

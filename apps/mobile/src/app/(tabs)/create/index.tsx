@@ -153,7 +153,16 @@ export default function Create() {
                   <Pressable onPress={() => togglePick(a.mint)} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md, opacity: pressed ? 0.7 : 1 })}>
                     <AssetLogo uri={a.logo} ticker={a.ticker} size={38} />
                     <View style={{ flex: 1 }}>
-                      <Text v="bodyStrong">{a.ticker}</Text>
+                      <Row gap={6}>
+                        <Text v="bodyStrong">{a.ticker}</Text>
+                        {a.ticker === "SKR" ? (
+                          <View style={{ paddingHorizontal: 6, paddingVertical: 1, borderRadius: radius.pill, backgroundColor: c.upSoft }}>
+                            <Text v="small" color={c.up} style={{ fontSize: 11 }}>
+                              Seeker
+                            </Text>
+                          </View>
+                        ) : null}
+                      </Row>
                       <Text v="small" color={c.textMuted} numberOfLines={1}>
                         {a.name}
                       </Text>
