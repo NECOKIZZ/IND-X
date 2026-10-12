@@ -1,4 +1,4 @@
-// Headers. The League has the app bar (Ind-X, Testnet when on testnet, the
+// Headers. The League has the app bar (IndX, Testnet when on testnet, the
 // ⋯ menu); other tabs have a large light page title; pushed screens a back
 // button.
 
@@ -90,7 +90,7 @@ function Menu({ open, onClose }: { open: boolean; onClose: () => void }) {
             />
           </View>
           <Divider style={{ marginVertical: 0 }} />
-          {item("league", "How Ind-X works", () => go("/rules"))}
+          {item("league", "How IndX works", () => go("/rules"))}
           {item("rules", "Rules & payouts", () => go("/rules"))}
           {item("docs", "FAQ & docs", () => go("/rules"))}
           {item("shield", "Verify a round", () => go(roundId ? `/round/${roundId}` : "/results"))}

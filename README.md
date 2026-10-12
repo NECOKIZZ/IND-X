@@ -1,4 +1,4 @@
-# IND-X (working name)
+# IndX
 
 A weekly stock league on **Solana**, as a mobile app. The Solana and mobile version of [Median Markets](https://github.com/NECOKIZZ/ETF) (BNB Chain) and [Kickoff Stocks](https://github.com/NECOKIZZ/kickoffstocks) (Robinhood Chain).
 
