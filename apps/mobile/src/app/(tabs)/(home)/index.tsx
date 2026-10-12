@@ -41,7 +41,7 @@ function Hero({ r }: { r: RoundView }) {
               Round {r.id} · {PHASE[r.phase]}
             </Label>
           </Row>
-          <Pressable onPress={() => router.push("/rules")} hitSlop={10}>
+          <Pressable onPress={() => router.push("/rules?s=how")} hitSlop={10}>
             <Row gap={4}>
               <Text v="smallStrong">How it works</Text>
               <Icon name="arrow" size={13} color={c.text} strokeWidth={2} />
@@ -123,7 +123,7 @@ function YourEntry({ r }: { r: RoundView }) {
         {faucet.available ? (
           <Button title="Get test funds" kind="secondary" style={{ flex: 1 }} loading={faucet.busy} onPress={faucet.drip} />
         ) : (
-          <Button title="How it works" kind="secondary" style={{ flex: 1 }} onPress={() => router.push("/rules")} />
+          <Button title="How it works" kind="secondary" style={{ flex: 1 }} onPress={() => router.push("/rules?s=how")} />
         )}
       </Row>
     );

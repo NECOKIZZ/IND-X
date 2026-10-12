@@ -115,6 +115,9 @@ export interface RoundView {
   etfs: EtfSummary[];
   voidReason: string | null;
   inputsHash: string | null;
+  /** The round's account and its on-chain transactions (opened, settled, voided). */
+  account: string;
+  txs: { kind: string; sig: string }[];
   serverTime: number;
   /** The median's return over the round so far; empty before it starts. */
   medianSeries: { t: number; pct: number }[];

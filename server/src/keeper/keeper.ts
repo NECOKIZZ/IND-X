@@ -108,7 +108,8 @@ export class Keeper {
     const id = cfg.roundCount + 1n;
     const entryClose = Math.floor(times.entryClose / 1000);
     const end = Math.floor(times.end / 1000);
-    await this.send([await this.L.b.openRound(this.kp.publicKey, id, entryClose, end, this.opts.stake, this.opts.capMultiple, this.opts.maxBackers)]);
+    const sig = await this.send([await this.L.b.openRound(this.kp.publicKey, id, entryClose, end, this.opts.stake, this.opts.capMultiple, this.opts.maxBackers)]);
+    await this.L.store.recordTx(id, "opened", sig);
     this.log(`opened round ${id}: entries close ${new Date(entryClose * 1000).toISOString()}, ends ${new Date(end * 1000).toISOString()}`);
     await this.onEvent({ kind: "opened", roundId: id, entryClose, end });
     return id;
@@ -167,7 +168,8 @@ export class Keeper {
     for (const t of s.teams) this.log(`  ${t.isWinner ? "WIN " : "    "} ${t.teamKey.slice(0, 8)} ${(Number(t.ret) / 1e10).toFixed(3)}% (${t.members} on team)`);
     if (dryRun) return s;
     await this.L.store.saveInputs(roundId, s.inputs);
-    await submitSettlement(this.L.io, this.L.b, this.kp, roundId, s, entries, { lookupTables: await this.L.lookupTables(), log: (m) => this.log(`  ${m}`) });
+    const sigs = await submitSettlement(this.L.io, this.L.b, this.kp, roundId, s, entries, { lookupTables: await this.L.lookupTables(), log: (m) => this.log(`  ${m}`) });
+    for (const sig of sigs) await this.L.store.recordTx(roundId, s.void ? "voided" : "settled", sig);
     await this.onEvent({ kind: "settled", roundId, settlement: s });
     return s;
   }

@@ -120,6 +120,14 @@ export class PgKV implements KV {
 export class Store {
   constructor(readonly kv: KV) {}
 
+  /** A round's on-chain transactions (opened, settled, voided), oldest first. */
+  async recordTx(roundId: bigint, kind: string, sig: string) {
+    await this.kv.put(`txs/${roundId}/${Date.now()}-${sig.slice(0, 8)}`, { kind, sig });
+  }
+  async roundTxs(roundId: bigint): Promise<{ kind: string; sig: string }[]> {
+    return (await this.kv.list(`txs/${roundId}/`)).map((r) => r.v as { kind: string; sig: string });
+  }
+
   async saveSample(roundId: bigint, phase: Phase, sample: Map<string, PriceSample>, at: number) {
     const k = `rounds/${roundId}/${phase}/${pad(at)}`;
     await this.kv.put(k, [...sample.values()]);
