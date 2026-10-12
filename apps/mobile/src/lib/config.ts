@@ -18,6 +18,6 @@ export const SCHEME = "indx";
  * The app id and client id are public; the app secret never goes in the app.
  */
 export const PRIVY_APP_ID = process.env.EXPO_PUBLIC_PRIVY_APP_ID ?? "cmv4tg865001c0flbllafphro";
-export const PRIVY_CLIENT_ID = process.env.EXPO_PUBLIC_PRIVY_CLIENT_ID || undefined;
+export const PRIVY_CLIENT_ID = process.env.EXPO_PUBLIC_PRIVY_CLIENT_ID || "client-WY6efz3oLeZxE1EKb7Z8jEU2DyF3MB5kqQEMSC6yJJVTj";
 /** Where the passkey association lives (/.well-known/assetlinks.json). */
 export const PASSKEY_DOMAIN = "https://ind-x-app.onrender.com";
