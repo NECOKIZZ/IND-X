@@ -1,7 +1,8 @@
 // More sign-in options (a sheet): passkey, email, or importing an existing
 // wallet. The import is handled by the wallet provider; Ind-X never sees it.
 
-import { Pressable, View } from "react-native";
+import { Platform, Pressable, View } from "react-native";
+import { isSeeker } from "@/lib/device";
 import { space, useColors } from "@/theme";
 import { useSignIn, type SignInMethod } from "@/wallet/signin";
 import { Icon, type IconName } from "@/components/Icon";
@@ -9,6 +10,10 @@ import { useToast } from "@/components/Toast";
 import { Divider, Text } from "@/components/ui";
 
 const OPTIONS: { method: SignInMethod; icon: IconName; title: string; detail: string }[] = [
+  ...(Platform.OS === "android"
+    ? [{ method: "wallet" as const, icon: "wallet" as const, title: isSeeker() ? "Seed Vault" : "A wallet on this phone", detail: isSeeker() ? "Your Seeker's built-in wallet" : "Phantom, Solflare, Backpack, Seed Vault…" }]
+    : []),
+  ...(isSeeker() ? [{ method: "google" as const, icon: "google" as const, title: "Google", detail: "Sign in with your Google account" }] : []),
   { method: "passkey", icon: "faceid", title: "Face ID or fingerprint", detail: "Sign in with a passkey on this phone" },
   { method: "email", icon: "mail", title: "Email", detail: "We send you a one-time code" },
 ];

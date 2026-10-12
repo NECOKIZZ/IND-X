@@ -1,6 +1,6 @@
 // One ETF: return against the median, chart, basket, team; back it or buy it.
 
-import { View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
 import { BlurView } from "expo-blur";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,6 +21,7 @@ import { Button, Card, Divider, ErrorView, Label, Num, Pill, Row, Screen, Sectio
 export default function EtfScreen() {
   const c = useColors();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const { round, key } = useLocalSearchParams<{ round: string; key: string }>();
   const etf = useEtf(round, key);
   const { address } = useWallet();
@@ -43,6 +44,7 @@ export default function EtfScreen() {
   const tone = e.standing === "above" ? c.up : e.standing === "below" ? c.down : c.line;
   const inThis = mine?.etfKey === e.key;
   const full = e.members >= e.maxBackers; // members excludes the captain
+  const pad = width < 360 ? space.lg : space.xl;
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
@@ -57,9 +59,9 @@ export default function EtfScreen() {
 
         <View style={{ marginTop: space.xl, borderRadius: radius.xl, overflow: "hidden", backgroundColor: c.surface, borderWidth: 1, borderColor: c.border }}>
           <Glow variant={2} />
-          <View style={{ padding: space.xl, gap: space.lg }}>
-            <Row style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-              <View>
+          <View style={{ padding: pad, gap: space.lg }}>
+            <Row style={{ justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", rowGap: space.sm }}>
+              <View style={{ flexShrink: 1 }}>
                 <Label>{e.roundPhase === "settled" ? "Final return" : e.roundPhase === "open" ? "Last 24 hours" : "Since the open"}</Label>
                 <Num v="display" color={signColor(c, e.retPct)}>
                   {pct(e.retPct)}

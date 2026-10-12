@@ -41,7 +41,13 @@ export function Carousel({ round }: { round: RoundView | undefined }) {
     return () => clearInterval(t);
   }, [cards, step]);
 
-  const shell = { width: cardW, height: HEIGHT, borderRadius: radius.xl, overflow: "hidden" as const, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, borderCurve: "continuous" as const };
+  // The hot card's two mini cards size to what's left beside the title.
+  const textW = Math.max(112, Math.round(cardW * 0.42));
+  // Narrow phones show one bigger card instead of two small ones.
+  const single = cardW - textW < 150;
+  const miniW = single ? Math.max(84, Math.min(112, cardW - textW - 16)) : Math.max(70, Math.min(112, Math.round((cardW - textW) * 0.58)));
+  const miniH = Math.round(miniW * 1.3);
+  const shell = { width: cardW, minHeight: HEIGHT, borderRadius: radius.xl, overflow: "hidden" as const, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, borderCurve: "continuous" as const };
 
   return (
     <View style={{ marginHorizontal: -pad }}>
@@ -51,22 +57,22 @@ export function Carousel({ round }: { round: RoundView | undefined }) {
         showsHorizontalScrollIndicator={false}
         snapToInterval={step}
         decelerationRate="fast"
-        contentContainerStyle={{ paddingHorizontal: pad, gap: space.md }}
+        contentContainerStyle={{ paddingHorizontal: pad, gap: space.md, alignItems: "stretch" }}
         onScrollBeginDrag={() => (touched.current = Date.now())}
         onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / step))}
       >
         {/* 1. The guide, shown first to every new player. */}
-        <View style={[shell, { padding: space.xl - 2, justifyContent: "space-between" }]}>
+        <View style={[shell, { padding: space.lg + 2, justifyContent: "space-between", gap: space.lg }]}>
           <Glow variant={0} />
           <View style={{ gap: 6 }}>
-            <Text v="title" style={{ fontSize: 24, lineHeight: 28 }}>
+            <Text v="heading" style={{ fontSize: 20, lineHeight: 24, letterSpacing: -0.4 }}>
               {brand.tagline}
             </Text>
             <Text v="small" color={c.textMuted} numberOfLines={3}>
               {brand.pitch}
             </Text>
           </View>
-          <Row>
+          <Row style={{ flexWrap: "wrap" }}>
             <Button small title="Get started" onPress={() => router.push("/create")} />
             <Button small title="Learn more" kind="ghost" icon="arrow" onPress={() => router.push("/rules")} />
           </Row>
@@ -76,20 +82,20 @@ export function Carousel({ round }: { round: RoundView | undefined }) {
         {hot.length ? (
           <View style={[shell, { flexDirection: "row" }]}>
             <Glow variant={2} />
-            <View style={{ width: 128, padding: space.lg + 2, gap: 6 }}>
+            <View style={{ width: textW, padding: space.lg, gap: 6 }}>
               <Label>Hot this week</Label>
-              <Text v="heading" style={{ fontSize: 19, lineHeight: 23 }}>
+              <Text v="heading" style={{ fontSize: 18, lineHeight: 22 }}>
                 The ETFs everyone is backing
               </Text>
             </View>
             <View style={{ flex: 1 }}>
-              {hot.map((e, i) => (
+              {(single ? hot.slice(0, 1) : hot).map((e, i) => (
                 <Pressable
                   key={e.key}
                   onPress={() => round && router.push(`/etf/${round.id}/${e.key}`)}
-                  style={{ position: "absolute", left: i ? 64 : 0, top: i ? 10 : 22, transform: [{ rotate: i ? "6deg" : "-9deg" }] }}
+                  style={{ position: "absolute", left: i ? Math.round(miniW * 0.55) : 0, top: i ? 10 : 22, transform: [{ rotate: i ? "6deg" : "-9deg" }] }}
                 >
-                  <EtfCard name={e.name} legs={e.legs} retPct={pct(e.retPct)} theme={i} width={112} height={146} />
+                  <EtfCard name={e.name} legs={e.legs} retPct={pct(e.retPct)} theme={i} width={miniW} height={miniH} />
                 </Pressable>
               ))}
             </View>

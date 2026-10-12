@@ -3,7 +3,7 @@
 // median), your entry, live standings around the median, and activity.
 
 import { useState } from "react";
-import { Pressable, RefreshControl, View } from "react-native";
+import { Pressable, RefreshControl, useWindowDimensions, View } from "react-native";
 import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -25,13 +25,14 @@ const PHASE: Record<RoundView["phase"], string> = { open: "Entries open", live: 
 
 function Hero({ r }: { r: RoundView }) {
   const c = useColors();
+  const { width } = useWindowDimensions();
   const settling = (r.phase === "live" && r.serverTime >= r.end) || r.phase === "settling";
   const target = r.phase === "open" ? r.entryClose : r.end;
   return (
     <View style={{ borderRadius: radius.xl, overflow: "hidden", backgroundColor: c.surface, borderCurve: "continuous", borderWidth: 1, borderColor: c.border }}>
       <Glow />
-      <View style={{ padding: space.xl, gap: space.xl }}>
-        <Row style={{ justifyContent: "space-between" }}>
+      <View style={{ padding: width < 360 ? space.lg : space.xl, gap: space.xl }}>
+        <Row style={{ justifyContent: "space-between", flexWrap: "wrap", rowGap: space.sm }}>
           <Row gap={8}>
             {r.phase === "open" || r.phase === "live" ? <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: c.up }} /> : null}
             <Label color={c.text}>
@@ -83,7 +84,7 @@ function Hero({ r }: { r: RoundView }) {
           </View>
         ) : null}
 
-        <Row style={{ justifyContent: "space-between" }}>
+        <Row style={{ justifyContent: "space-between", flexWrap: "wrap", rowGap: space.md, columnGap: space.lg }}>
           <Stat label="Pot" value={usd(r.potUsd, 0)} />
           <Stat label="Players" value={String(r.players)} />
           <Stat label="ETFs" value={String(r.etfCount)} />
