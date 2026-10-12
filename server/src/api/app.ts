@@ -122,8 +122,8 @@ export function createApp(L: League) {
     }
   };
   app.post("/v1/basket/quote", async (c) => {
-    const b = await body<{ wallet?: string; legs: { mint: string; weightBps: number }[]; usd?: number }>(c);
-    return json(c, await quoteBasket(L, b.wallet, b.legs, b.usd));
+    const b = await body<{ wallet?: string; legs: { mint: string; weightBps: number }[]; usd?: number; buy?: boolean; useHeld?: boolean }>(c);
+    return json(c, await quoteBasket(L, b.wallet, b.legs, b.usd, { buy: b.buy, useHeld: b.useHeld }));
   });
   app.post("/v1/tx/create", async (c) => json(c, await planCreate(L, await body(c))));
   app.post("/v1/tx/back", async (c) => json(c, await planBack(L, await body(c))));

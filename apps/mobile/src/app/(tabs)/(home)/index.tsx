@@ -18,6 +18,7 @@ import { Countdown } from "@/components/Countdown";
 import { Glow } from "@/components/Glow";
 import { APP_BAR_HEIGHT, AppBar } from "@/components/Header";
 import { Icon } from "@/components/Icon";
+import { useFaucet } from "@/components/useFaucet";
 import { Standings } from "@/components/Standings";
 import { Sparkline } from "@/components/Sparkline";
 
@@ -101,13 +102,18 @@ function YourEntry({ r }: { r: RoundView }) {
   const { address } = useWallet();
   const w = useWalletView(address);
   const e = w.data?.entries.find((x) => x.roundId === r.id);
+  const faucet = useFaucet();
   if (!address) return null;
   if (!e) {
     if (r.phase !== "open") return null;
     return (
       <Row style={{ marginTop: space.md }}>
         <Button title="Build an ETF" style={{ flex: 1 }} onPress={() => router.push("/create")} />
-        <Button title="Back one" kind="secondary" style={{ flex: 1 }} disabled={!r.etfs.length} onPress={() => r.etfs[0] && router.push(`/etf/${r.id}/${r.etfs[0].key}`)} />
+        {faucet.available ? (
+          <Button title="Get test funds" kind="secondary" style={{ flex: 1 }} loading={faucet.busy} onPress={faucet.drip} />
+        ) : (
+          <Button title="How it works" kind="secondary" style={{ flex: 1 }} onPress={() => router.push("/rules")} />
+        )}
       </Row>
     );
   }

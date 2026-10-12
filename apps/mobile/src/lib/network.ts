@@ -1,8 +1,9 @@
 // Testnet or mainnet: each has its own league server (and its own money).
-// The choice is kept on the device; switching signs you out, since a test
-// wallet and real funds don't mix.
+// The choice is kept on the device; switching reloads the app against the
+// other server and keeps you signed in.
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { Platform } from "react-native";
 import { MAINNET_API_URL, TESTNET_API_URL } from "./config";
 import { store } from "@/wallet/storage";
 
@@ -29,6 +30,22 @@ export async function setNetwork(n: Network) {
   current = n;
   await store.set(KEY, n);
   listeners.forEach((l) => l());
+}
+
+let reloader: (() => void) | null = null;
+
+/** The root layout registers how to reload everything (splash, fresh data). */
+export function onReload(fn: () => void) {
+  reloader = fn;
+  return () => {
+    if (reloader === fn) reloader = null;
+  };
+}
+
+/** Reload the app: the browser reloads the page, the native app refetches behind the splash. */
+export function reloadApp() {
+  if (Platform.OS === "web" && typeof window !== "undefined") window.location.reload();
+  else reloader?.();
 }
 
 export function useNetwork() {

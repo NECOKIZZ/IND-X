@@ -11,7 +11,7 @@ import { WalletProvider, useWallet } from "@/wallet/WalletProvider";
 import { useNotifications } from "@/lib/notifications";
 import { useAppFonts } from "@/theme/fonts";
 import { Splash, useSplash } from "@/components/Splash";
-import { useNetworkReady } from "@/lib/network";
+import { onReload, useNetworkReady } from "@/lib/network";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -41,6 +41,15 @@ function App() {
   useEffect(() => {
     if (fontsReady) SplashScreen.hideAsync().catch(() => {});
   }, [fontsReady]);
+  const { again } = splash;
+  useEffect(
+    () =>
+      onReload(() => {
+        again();
+        queryClient.resetQueries();
+      }),
+    [again],
+  );
   if (!fontsReady || !networkReady) return null;
   return (
     <SafeAreaProvider>
@@ -66,7 +75,7 @@ function App() {
                   />
                   <Stack.Screen
                     name="amount"
-                    options={{ title: "Buy", presentation: "formSheet", sheetAllowedDetents: [0.6], sheetGrabberVisible: true, headerShown: false }}
+                    options={{ title: "Buy", presentation: "formSheet", sheetAllowedDetents: [0.85], sheetGrabberVisible: true, headerShown: false }}
                   />
                 </Stack>
                 {splash.show ? <Splash onDone={splash.done} /> : null}

@@ -230,9 +230,21 @@ describe("backend end to end", () => {
     await api("/v1/faucet", { body: { wallet: p.publicKey.toBase58() } });
     const assets = await api<{ symbol: string; mint: string }[]>("/v1/assets");
     const legs = ["AAPLx", "MSFTx", "NVDAx"].map((s, j) => ({ mint: assets.find((a) => a.symbol === s)!.mint, weightBps: [4000, 3000, 3000][j] }));
-    await signAndSend(await api<TxPlan>("/v1/tx/buy", { body: { wallet: p.publicKey.toBase58(), legs, usd: 15 } }), p);
-    await signAndSend(await api<TxPlan>("/v1/tx/create", { body: { wallet: p.publicKey.toBase58(), legs, name: "Solo" } }), p);
+    // Some AAPL already in the wallet: creating with USDC must leave it alone.
+    await signAndSend(await api<TxPlan>("/v1/tx/buy", { body: { wallet: p.publicKey.toBase58(), legs: legs.slice(0, 1).map((l) => ({ ...l, weightBps: 10_000 })), usd: 3 } }), p);
+    const aapl = async () => (await api<WalletView>(`/v1/wallets/${p.publicKey.toBase58()}`)).assets.find((a) => a.symbol === "AAPLx")!.raw;
+    const held = await aapl();
+    const usdcBefore = (await api<WalletView>(`/v1/wallets/${p.publicKey.toBase58()}`)).usdc.uiAmount;
+    // Without buy, holdings this small can't make a basket.
+    await expect(api<TxPlan>("/v1/tx/create", { body: { wallet: p.publicKey.toBase58(), legs, usd: 15, name: "Solo" } })).rejects.toThrow(/at least/);
+    // With buy, $15 of USDC is swapped into the basket in the same approval.
+    const quote = await api<{ usd: number; buyUsd: number }>("/v1/basket/quote", { body: { wallet: p.publicKey.toBase58(), legs, usd: 15, buy: true } });
+    expect(quote.usd).toBeCloseTo(15, 1);
+    expect(quote.buyUsd).toBeCloseTo(15, 1);
+    await signAndSend(await api<TxPlan>("/v1/tx/create", { body: { wallet: p.publicKey.toBase58(), legs, usd: 15, buy: true, name: "Solo" } }), p);
+    expect(await aapl()).toBe(held);
     const before = (await api<WalletView>(`/v1/wallets/${p.publicKey.toBase58()}`)).usdc.uiAmount;
+    expect(usdcBefore - before).toBeCloseTo(20, 1); // $15 of stocks + the $5 ticket
     const r = (await L.reader.round(id))!;
     setTime(r.entryClose * 1000 + 1000);
     await keeper.tick();
@@ -248,6 +260,20 @@ describe("backend end to end", () => {
     expect(after.usdc.uiAmount).toBeCloseTo(before + 5, 6);
     expect(after.entries[0].state).toBe("voided");
     expect(after.assets.find((a) => a.symbol === "AAPLx")!.raw).not.toBe("0");
+  });
+
+  it("creates an 8-token basket straight from USDC", async () => {
+    await keeper.tick();
+    const p = Keypair.generate();
+    await api("/v1/faucet", { body: { wallet: p.publicKey.toBase58() } });
+    const assets = await api<{ symbol: string; mint: string }[]>("/v1/assets");
+    const syms = ["AAPLx", "MSFTx", "NVDAx", "TSLAx", "AMZNx", "METAx", "SPYx", "cbBTC"];
+    const legs = syms.map((s) => ({ mint: assets.find((a) => a.symbol === s)!.mint, weightBps: 1250 }));
+    const plan = await api<TxPlan>("/v1/tx/create", { body: { wallet: p.publicKey.toBase58(), legs, usd: 40, buy: true, name: "Everything" } });
+    await signAndSend(plan, p);
+    const v = await api<WalletView>(`/v1/wallets/${p.publicKey.toBase58()}`);
+    expect(v.entries.some((e) => e.state !== "voided")).toBe(true);
+    expect(v.usdc.uiAmount).toBeCloseTo(100 - 45, 0);
   });
 
   it("claims a @tag and sends USDC to it", async () => {
