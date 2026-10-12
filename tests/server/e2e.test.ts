@@ -238,13 +238,14 @@ describe("backend end to end", () => {
     // Without buy, holdings this small can't make a basket.
     await expect(api<TxPlan>("/v1/tx/create", { body: { wallet: p.publicKey.toBase58(), legs, usd: 15, name: "Solo" } })).rejects.toThrow(/at least/);
     // With buy, $15 of USDC is swapped into the basket in the same approval.
-    const quote = await api<{ usd: number; buyUsd: number }>("/v1/basket/quote", { body: { wallet: p.publicKey.toBase58(), legs, usd: 15, buy: true } });
-    expect(quote.usd).toBeCloseTo(15, 1);
-    expect(quote.buyUsd).toBeCloseTo(15, 1);
-    await signAndSend(await api<TxPlan>("/v1/tx/create", { body: { wallet: p.publicKey.toBase58(), legs, usd: 15, buy: true, name: "Solo" } }), p);
+    // Exactly the $10 minimum must be enough (no rounding down to $9.99).
+    const quote = await api<{ usd: number; buyUsd: number }>("/v1/basket/quote", { body: { wallet: p.publicKey.toBase58(), legs, usd: 10, buy: true } });
+    expect(quote.usd).toBeGreaterThanOrEqual(10);
+    expect(quote.buyUsd).toBeCloseTo(10, 1);
+    await signAndSend(await api<TxPlan>("/v1/tx/create", { body: { wallet: p.publicKey.toBase58(), legs, usd: 10, buy: true, name: "Solo" } }), p);
     expect(await aapl()).toBe(held);
     const before = (await api<WalletView>(`/v1/wallets/${p.publicKey.toBase58()}`)).usdc.uiAmount;
-    expect(usdcBefore - before).toBeCloseTo(20, 1); // $15 of stocks + the $5 ticket
+    expect(usdcBefore - before).toBeCloseTo(15, 1); // $10 of stocks + the $5 ticket
     const r = (await L.reader.round(id))!;
     setTime(r.entryClose * 1000 + 1000);
     await keeper.tick();
