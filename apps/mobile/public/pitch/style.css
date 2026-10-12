@@ -1,0 +1,12 @@
+:root{--ink:#0B0C0E;--panel:#141819;--line:rgba(197,218,197,.12);--sage:#C5DAC5;--sage2:#9DBE9D;--text:#EEF2ED;--muted:rgba(238,242,237,.64);--faint:rgba(238,242,237,.38);--up:#8FD3AD;--down:#F08A7E}
+*{box-sizing:border-box}html,body{margin:0;background:var(--ink);color:var(--text);font-family:Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--sage)}a:hover{color:#E4EEE4}
+.label{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;font-weight:500;color:var(--faint)}
+.mark{display:inline-flex;align-items:center;gap:10px;font-weight:500;letter-spacing:-.4px;color:var(--text);text-decoration:none}
+.mark i{width:28px;height:28px;border-radius:8px;background:var(--sage);display:inline-flex;align-items:center;justify-content:center}
+.mark i img{width:15px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 18px;border-radius:21px;background:var(--sage);color:var(--ink);font-weight:500;text-decoration:none;font-size:15px;border:0;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+.btn:hover{filter:brightness(1.05);color:var(--ink)}.btn.ghost:hover{color:var(--text);border-color:rgba(197,218,197,.3)}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--faint);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.8px}
+.up{color:var(--up)}.down{color:var(--down)}.muted{color:var(--muted)}.faint{color:var(--faint)}
