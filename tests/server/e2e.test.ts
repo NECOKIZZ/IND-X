@@ -303,6 +303,18 @@ describe("backend end to end", () => {
     setTime(now + MIN);
     log.push(...(await keeper.tick()));
     expect(log.join("\n")).toContain(`settled round ${r1}`);
+    // A round voided beside the live one is refunded straight away.
+    await keeper.openRound({ entryClose: now + 30 * MIN, end: now + 90 * MIN });
+    const r3 = r2 + 1n;
+    const q = Keypair.generate();
+    await api("/v1/faucet", { body: { wallet: q.publicKey.toBase58() } });
+    await signAndSend(await api<TxPlan>("/v1/tx/create", { body: { wallet: q.publicKey.toBase58(), legs, usd: 10, buy: true, name: "Refund me" } }), q);
+    const { sendIxs } = await import("../../server/src/chain/io");
+    await sendIxs(io, [L.keeper!], [await L.b.voidRound(L.keeper!.publicKey, r3)]);
+    await keeper.tick();
+    const qv = await api<WalletView>(`/v1/wallets/${q.publicKey.toBase58()}`);
+    expect(qv.usdc.uiAmount).toBeCloseTo(100 - 15 + 5, 1); // ticket back
+    expect(qv.assets.find((a) => a.symbol === "AAPLx")!.raw).not.toBe("0"); // basket back
     expect(["settled", "voided"]).toContain((await L.reader.round(r1))!.status);
     expect((await L.reader.round(r2))!.status).toBe("open");
     expect((await api<RoundView>("/v1/rounds/current")).id).toBe(r2.toString());

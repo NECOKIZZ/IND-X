@@ -213,8 +213,8 @@ export class Keeper {
     const now = this.clock();
     const chainNow = (await this.L.io.now()) * 1000;
 
-    // Earlier rounds still holding money: distribute.
-    for (let id = cfg.roundCount - 1n; id >= 1n && id >= cfg.roundCount - 3n; id--) {
+    // Finished rounds still holding money (the latest too): distribute.
+    for (let id = cfg.roundCount; id >= 1n && id >= cfg.roundCount - 3n; id--) {
       if (await this.distribute(id)) did.push(`paid out round ${id}`);
     }
 
@@ -230,7 +230,6 @@ export class Keeper {
     }
     // The next round opens only once every round before it has finished.
     if (running === 0) {
-      if (cfg.roundCount > 0n && (await this.distribute(cfg.roundCount))) did.push(`paid out round ${cfg.roundCount}`);
       if (this.opts.autoOpen) did.push(`opened round ${await this.openRound()}`);
     }
     return did;
