@@ -277,6 +277,32 @@ describe("backend end to end", () => {
     expect(v.usdc.uiAmount).toBeCloseTo(100 - 45, 0);
   });
 
+  it("settles a round while the next one is already open for entries", async () => {
+    await keeper.tick();
+    const r1 = (await L.reader.config())!.roundCount;
+    const p = Keypair.generate();
+    await api("/v1/faucet", { body: { wallet: p.publicKey.toBase58() } });
+    const assets = await api<{ symbol: string; mint: string }[]>("/v1/assets");
+    const legs = ["AAPLx", "MSFTx", "NVDAx"].map((s, j) => ({ mint: assets.find((a) => a.symbol === s)!.mint, weightBps: [4000, 3000, 3000][j] }));
+    await signAndSend(await api<TxPlan>("/v1/tx/create", { body: { wallet: p.publicKey.toBase58(), legs, usd: 10, buy: true, name: "Overlap" } }), p);
+    const round1 = (await L.reader.round(r1))!;
+    setTime(round1.entryClose * 1000 + 1000);
+    const log: string[] = [...(await keeper.tick())];
+    // The next round opens while round 1 is still live.
+    await keeper.openRound({ entryClose: now + 30 * MIN, end: round1.end * 1000 + 30 * MIN });
+    const r2 = r1 + 1n;
+    setTime(now + MIN);
+    log.push(...(await keeper.tick()));
+    setTime(round1.end * 1000 + 1000);
+    log.push(...(await keeper.tick()));
+    setTime(now + MIN);
+    log.push(...(await keeper.tick()));
+    expect(log.join("\n")).toContain(`settled round ${r1}`);
+    expect(["settled", "voided"]).toContain((await L.reader.round(r1))!.status);
+    expect((await L.reader.round(r2))!.status).toBe("open");
+    expect((await api<RoundView>("/v1/rounds/current")).id).toBe(r2.toString());
+  });
+
   it("claims a @tag and sends USDC to it", async () => {
     const a = Keypair.generate();
     const b = Keypair.generate();

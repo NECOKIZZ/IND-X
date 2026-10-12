@@ -225,9 +225,22 @@ export class Keeper {
       return did;
     }
 
-    const id = latest.id;
-    const closeMs = latest.entryClose * 1000;
-    const endMs = latest.end * 1000;
+    // Rounds can overlap (the next one opens for entries while this one is
+    // live): move every unfinished recent round along, oldest first.
+    for (let id = cfg.roundCount > 3n ? cfg.roundCount - 3n : 1n; id <= cfg.roundCount; id++) {
+      const round = id === latest.id ? latest : await this.L.reader.round(id);
+      if (!round || round.status === "settled" || round.status === "voided") continue;
+      did.push(...(await this.advance(round, now, chainNow)));
+    }
+    return did;
+  }
+
+  /** Samples, settles and pays one unfinished round as its times come due. */
+  private async advance(round: { id: bigint; entryClose: number; end: number }, now: number, chainNow: number): Promise<string[]> {
+    const did: string[] = [];
+    const id = round.id;
+    const closeMs = round.entryClose * 1000;
+    const endMs = round.end * 1000;
     const due = async (phase: "start" | "end", from: number) => {
       const have = await this.samplesIn(id, phase, from);
       if (have.length >= this.opts.samples) return false;
