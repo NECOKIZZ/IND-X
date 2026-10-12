@@ -74,7 +74,7 @@ export function Carousel({ round }: { round: RoundView | undefined }) {
           </View>
           <Row style={{ flexWrap: "wrap" }}>
             <Button small title="Get started" onPress={() => router.push("/create")} />
-            <Button small title="Learn more" kind="ghost" icon="arrow" onPress={() => router.push("/rules")} />
+            <Button small title="Learn more" kind="ghost" icon="arrow" onPress={() => router.push("/rules?s=how")} />
           </Row>
         </View>
 

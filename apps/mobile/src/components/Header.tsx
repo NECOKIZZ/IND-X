@@ -5,12 +5,15 @@
 import { useState, type ReactNode } from "react";
 import { Modal, Pressable, View } from "react-native";
 import { router } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { brand, font, space, useAppearance, useColors, type Appearance } from "@/theme";
 import { tap } from "@/lib/haptics";
 import { useConfig, useRound } from "@/lib/queries";
 import { Icon, type IconName } from "./Icon";
 import { Divider, IconButton, Label, Pill, Row, Segmented, Text } from "./ui";
+
+const DOCS_URL = "https://ind-x-app.onrender.com/pitch/";
 
 /** Shown only on testnet, so nobody confuses test money with real money. */
 export function NetworkBadge() {
@@ -90,9 +93,13 @@ function Menu({ open, onClose }: { open: boolean; onClose: () => void }) {
             />
           </View>
           <Divider style={{ marginVertical: 0 }} />
-          {item("league", "How IndX works", () => go("/rules"))}
-          {item("rules", "Rules & payouts", () => go("/rules"))}
-          {item("docs", "FAQ & docs", () => go("/rules"))}
+          {item("league", "How IndX works", () => go("/rules?s=how"))}
+          {item("rules", "Rules & payouts", () => go("/rules?s=rules"))}
+          {item("info", "FAQ", () => go("/rules?s=faq"))}
+          {item("docs", "Docs & pitch", () => {
+            onClose();
+            WebBrowser.openBrowserAsync(DOCS_URL).catch(() => {});
+          })}
           {item("shield", "Verify a round", () => go(roundId ? `/round/${roundId}` : "/results"))}
         </Pressable>
       </Pressable>

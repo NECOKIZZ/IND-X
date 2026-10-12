@@ -201,6 +201,10 @@ describe("backend end to end", () => {
     expect(round.medianSeries.length).toBeGreaterThanOrEqual(3);
     const v = await api<{ matches: boolean }>("/v1/rounds/1/verify");
     expect(v.matches).toBe(true);
+    // The round page lists its on-chain transactions.
+    const onchain = await api<RoundView>("/v1/rounds/1");
+    expect(onchain.txs.map((t) => t.kind)).toEqual(expect.arrayContaining(["opened", "settled"]));
+    expect(onchain.account).toBeTruthy();
 
     // Wallets show results; winners got more than their ticket back.
     const w = await api<WalletView>(`/v1/wallets/${players[5].publicKey.toBase58()}`);

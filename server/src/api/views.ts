@@ -303,6 +303,8 @@ export async function roundView(L: League, roundId: bigint): Promise<RoundView> 
     etfs: summaries(L, d),
     voidReason: d.phase === "voided" ? (d.s?.void ?? "voided") : d.pricing === "final" && d.s?.void ? d.s.void : null,
     inputsHash: d.phase === "settled" || d.phase === "voided" ? d.round.inputsHash : null,
+    account: L.b.pdas.round(roundId).toBase58(),
+    txs: await L.store.roundTxs(roundId),
     serverTime: await chainNow(L),
     medianSeries: d.series ? d.series.t.map((t, i) => ({ t, pct: d.series!.median[i] })).filter((p): p is { t: number; pct: number } => p.pct !== null) : [],
   };

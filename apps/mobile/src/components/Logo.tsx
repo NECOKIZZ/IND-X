@@ -2,7 +2,7 @@
 
 import { View } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { brand, font, useColors } from "@/theme";
+import { brand, font } from "@/theme";
 import { Text } from "./ui";
 
 /** The X's three strokes, in a 168 × 152.5 box. */
@@ -25,13 +25,11 @@ export function MarkGlyph({ width, color, paths = MARK_PATHS }: { width: number;
   );
 }
 
-/** The X on its tile (app icon style). */
+/** The X on its tile, like the app icon: white on a dark gradient. */
 export function Mark({ size = 28 }: { size?: number }) {
-  const c = useColors();
-  const dark = c.scheme === "dark";
   return (
-    <View style={{ width: size, height: size, borderRadius: size * 0.28, backgroundColor: dark ? c.secondary : c.text, alignItems: "center", justifyContent: "center", borderCurve: "continuous" }}>
-      <MarkGlyph width={size * 0.52} color={dark ? c.onSecondary : c.bg} />
+    <View style={{ width: size, height: size, borderRadius: size * 0.28, overflow: "hidden", alignItems: "center", justifyContent: "center", borderCurve: "continuous", experimental_backgroundImage: "linear-gradient(150deg, #2A3234, #0B0C0E)", backgroundColor: "#15191A" }}>
+      <MarkGlyph width={size * 0.52} color="#F6F8F5" />
     </View>
   );
 }

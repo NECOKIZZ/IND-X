@@ -70,7 +70,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
 
   const stroke = (d: string, style: object) => (
     <Animated.View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center" }, style]}>
-      <MarkGlyph width={GLYPH} color={palette.sage} paths={[d]} />
+      <MarkGlyph width={GLYPH} color={palette.mist} paths={[d]} />
     </Animated.View>
   );
 

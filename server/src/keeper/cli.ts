@@ -56,7 +56,7 @@ switch (cmd) {
     await k.distribute(id());
     break;
   case "void":
-    await sendIxs(L.io, [L.keeper!], [await L.b.voidRound(L.keeper!.publicKey, id())]);
+    await L.store.recordTx(id(), "voided", await sendIxs(L.io, [L.keeper!], [await L.b.voidRound(L.keeper!.publicKey, id())]));
     console.log(`voided round ${args[1]}`);
     break;
   case "status": {
