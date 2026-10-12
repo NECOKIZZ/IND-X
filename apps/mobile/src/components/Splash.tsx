@@ -1,7 +1,7 @@
 // The opening animation: just the logo (pop and a ring), then it fades out.
 // PLACEHOLDER mark until the real logo arrives.
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from "react-native-reanimated";
 import Svg, { Path } from "react-native-svg";
@@ -41,5 +41,6 @@ export function Splash({ onDone }: { onDone: () => void }) {
 /** Show the splash once per app start. */
 export function useSplash() {
   const [show, setShow] = useState(true);
-  return { show, done: () => setShow(false) };
+  const again = useCallback(() => setShow(true), []);
+  return { show, done: () => setShow(false), again };
 }

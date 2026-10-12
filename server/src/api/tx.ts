@@ -63,10 +63,24 @@ export interface BasketQuote {
   maxUsd: number;
   /** The basket the next transaction will lock (USD), capped at the request. */
   usd: number;
-  legs: { mint: string; symbol: string; weightBps: number; amountRaw: string; uiAmount: number; usd: number; heldRaw: string }[];
+  legs: { mint: string; symbol: string; weightBps: number; amountRaw: string; uiAmount: number; usd: number; heldRaw: string; buyRaw: string; buyUsd: number }[];
   /** Mainnet only: SOL to wrap into the SOL leg before locking (lamports). */
   wrapLamports: string;
+  /** With buy: USDC spent swapping into the missing stocks (USD). */
+  buyUsd: number;
+  /** The wallet's USDC (USD). */
+  usdcUsd: number;
 }
+
+export interface QuoteOpts {
+  /** Buy what's missing with USDC instead of capping at the wallet's balances. */
+  buy?: boolean;
+  /** With buy: use stocks already in the wallet first. */
+  useHeld?: boolean;
+}
+
+/** Mainnet swaps get this much headroom so slippage never leaves a leg short. */
+const SWAP_HEADROOM_BPS = 150n;
 
 /**
  * What a create transaction will lock for this wallet: per-leg amounts from
@@ -75,7 +89,7 @@ export interface BasketQuote {
  * so the screen always shows exactly what will be signed. Never locks a
  * wallet's whole balance unless asked for the max.
  */
-export async function quoteBasket(L: League, walletStr: string | undefined, legsReq: CreateRequest["legs"], usd?: number): Promise<BasketQuote> {
+export async function quoteBasket(L: League, walletStr: string | undefined, legsReq: CreateRequest["legs"], usd?: number, opts: QuoteOpts = {}): Promise<BasketQuote> {
   const n = legsReq?.length ?? 0;
   if (n < DEFAULT_RULES.minTokens || n > 10) throw new HttpError(400, `a basket holds ${DEFAULT_RULES.minTokens}–10 tokens`);
   const mints = legsReq.map((l) => l.mint);
@@ -100,6 +114,42 @@ export async function quoteBasket(L: League, walletStr: string | undefined, legs
     if (!p || p.value === 0n) throw new HttpError(503, `no price for ${a.symbol} right now`);
     return { raw: raws[i], decimals: a.decimals, price: Number(p.value) / 1e18, weightBps: weights[i] };
   });
+  const usdcRaw = wallet ? await usdcBalance(L, wallet) : 0n;
+  const usdcUsd = Number(usdcRaw) / 10 ** L.deployment.stakeDecimals;
+  if (opts.buy) {
+    // Size the basket from the requested dollars, then buy whatever the
+    // wallet doesn't already cover. Only these amounts are ever locked.
+    if (!usd || usd <= 0) throw new HttpError(400, "how much do you want to put in?");
+    const BIG = 10n ** 30n;
+    const fit = fitBasket(legs.map((l) => ({ ...l, raw: BIG })), usd);
+    const out = assets.map((a, i) => {
+      const want = fit.amounts[i];
+      const have = opts.useHeld ? (raws[i] < want ? raws[i] : want) : 0n;
+      const buyRaw = want - have;
+      const buyUsd = (Number(buyRaw) / 10 ** a.decimals) * legs[i].price;
+      return { a, want, buyRaw, buyUsd };
+    });
+    const buyUsd = out.reduce((s, l) => s + l.buyUsd, 0);
+    return {
+      weights,
+      maxUsd: fit.usd,
+      usd: fit.usd,
+      legs: out.map((l, i) => ({
+        mint: l.a.mint,
+        symbol: l.a.symbol,
+        weightBps: weights[i],
+        amountRaw: l.want.toString(),
+        uiAmount: Number(l.want) / 10 ** l.a.decimals,
+        usd: (Number(l.want) / 10 ** l.a.decimals) * legs[i].price,
+        heldRaw: raws[i].toString(),
+        buyRaw: l.buyRaw.toString(),
+        buyUsd: l.buyUsd,
+      })),
+      wrapLamports: "0",
+      buyUsd,
+      usdcUsd,
+    };
+  }
   const fit = fitBasket(legs, usd);
   const wrap = solIdx >= 0 && fit.amounts[solIdx] > held[solIdx] ? fit.amounts[solIdx] - held[solIdx] : 0n;
   return {
@@ -114,9 +164,44 @@ export async function quoteBasket(L: League, walletStr: string | undefined, legs
       uiAmount: Number(fit.amounts[i]) / 10 ** a.decimals,
       usd: (Number(fit.amounts[i]) / 10 ** a.decimals) * legs[i].price,
       heldRaw: raws[i].toString(),
+      buyRaw: "0",
+      buyUsd: 0,
     })),
     wrapLamports: wrap.toString(),
+    buyUsd: 0,
+    usdcUsd,
   };
+}
+
+/**
+ * Instructions that buy exact token amounts with the wallet's USDC on a test
+ * cluster: the test desk takes the USDC at live prices and mints the tokens
+ * (the server co-signs as their mint authority).
+ */
+async function deskBuyIxs(L: League, wallet: PublicKey, buys: { mint: string; raw: bigint }[]): Promise<{ ixs: TransactionInstruction[]; costRaw: bigint }> {
+  if (!L.faucet) throw new HttpError(501, "buying needs Jupiter (mainnet) or the test desk (FAUCET_KEYPAIR)");
+  const live = await livePrices(L);
+  const desk = L.faucet.publicKey;
+  const dec = L.deployment.stakeDecimals;
+  const stakeMint = L.b.env.stakeMint;
+  const ixs: TransactionInstruction[] = [];
+  let costRaw = 0n;
+  for (const b of buys) {
+    if (b.raw <= 0n) continue;
+    const a = L.assetByMint(b.mint)!;
+    const p = live.sample.get(b.mint);
+    if (!p || p.value === 0n) throw new HttpError(503, `no price for ${a.symbol}`);
+    // usdc raw = token raw × (USD per whole raw token) / 10^decimals, rounded up
+    const div = 10n ** BigInt(12 + a.decimals) * 10n ** BigInt(6 - dec);
+    costRaw += (b.raw * p.value + div - 1n) / div;
+    const m = new PublicKey(b.mint);
+    const tp = L.b.tokenProgramOf(m);
+    ixs.push(ensureAtaIx(wallet, wallet, m, tp), createMintToInstruction(m, getAssociatedTokenAddressSync(m, wallet, true, tp), desk, b.raw, [], tp));
+  }
+  if (costRaw > 0n) {
+    ixs.unshift(ensureAtaIx(wallet, desk, stakeMint, L.b.env.stakeTokenProgram), createTransferCheckedInstruction(L.b.stakeAta(wallet), stakeMint, L.b.stakeAta(desk), wallet, costRaw, dec, [], L.b.env.stakeTokenProgram));
+  }
+  return { ixs, costRaw };
 }
 
 export async function planCreate(L: League, req: CreateRequest): Promise<TxPlan> {
@@ -129,12 +214,12 @@ export async function planCreate(L: League, req: CreateRequest): Promise<TxPlan>
   if (fee < 0 || fee > MAX_CREATOR_BUY_FEE_BPS) throw new HttpError(400, "buy fee: 0–2%");
   if (await L.reader.entry(roundId, wallet)) throw new HttpError(409, "you're already in this round");
 
-  const q = await quoteBasket(L, req.wallet, req.legs, req.usd);
+  const q = await quoteBasket(L, req.wallet, req.legs, req.usd, { buy: req.buy, useHeld: req.useHeld });
   const mints = q.legs.map((l) => l.mint);
   const weights = q.weights;
   const minUsd = Number(DEFAULT_RULES.minValue / 10n ** 18n);
   if (q.usd < minUsd) {
-    throw new HttpError(409, `you need at least $${minUsd} of this basket at these weights (you can lock $${q.maxUsd.toFixed(2)}). Buy the stocks first.`);
+    throw new HttpError(409, req.buy ? `put in at least $${minUsd}` : `you need at least $${minUsd} of this basket at these weights (you can lock $${q.maxUsd.toFixed(2)})`);
   }
   // Rules apply to the declared weights (the locked amounts match them to rounding).
   const totalE18 = BigInt(Math.round(q.usd * 1e6)) * 10n ** 12n;
@@ -142,12 +227,34 @@ export async function planCreate(L: League, req: CreateRequest): Promise<TxPlan>
   const crypto = L.assets.filter((a) => a.kind === "crypto").map((a) => a.mint);
   const bad = basketEligibility(mints, values, { ...DEFAULT_RULES, cryptoTokens: crypto });
   if (bad) throw new HttpError(400, `basket not allowed: ${bad}`);
-  if ((await usdcBalance(L, wallet)) < round.stake) throw new HttpError(409, `you need ${toUnits(round.stake, L.deployment.stakeDecimals)} USDC for the ticket`);
+  const dec = L.deployment.stakeDecimals;
+  const usdc = await usdcBalance(L, wallet);
+  const buys = q.legs.map((l) => ({ mint: l.mint, raw: BigInt(l.buyRaw) }));
+  const buying = buys.some((b) => b.raw > 0n);
+  const buyRaw = BigInt(Math.ceil(q.buyUsd * 10 ** dec));
+  const needUsdc = round.stake + (L.cluster === "mainnet" ? (buyRaw * (10_000n + SWAP_HEADROOM_BPS)) / 10_000n : buyRaw);
+  if (usdc < needUsdc) {
+    throw new HttpError(409, buying ? `you need ${toUnits(needUsdc, dec).toFixed(2)} USDC (stocks + ticket) and have ${toUnits(usdc, dec).toFixed(2)}` : `you need ${toUnits(round.stake, dec)} USDC for the ticket`);
+  }
 
   const teamKey = teamKeyFromWeights(mints, weights);
   const existing = await L.reader.team(roundId, teamKey);
   if (existing && existing.members >= round.maxBackers) throw new HttpError(409, "that ETF is full");
+  const pre: string[] = [];
+  let deskSigned = false;
   const ixs: TransactionInstruction[] = [];
+  if (buying && L.cluster === "mainnet") {
+    // Jupiter swaps first (their own transactions), then the lock.
+    const active = buys.filter((b) => b.raw > 0n);
+    const legUsd = active.map((b) => q.legs.find((l) => l.mint === b.mint)!.buyUsd);
+    const sum = legUsd.reduce((a, b) => a + b, 0);
+    const w = normaliseWeights(legUsd.map((u) => Math.max(1, Math.round((u / sum) * 10_000))));
+    const spend = (buyRaw * (10_000n + SWAP_HEADROOM_BPS)) / 10_000n;
+    pre.push(...(await planBasketBuy(wallet.toBase58(), L.b.env.stakeMint.toBase58(), active.map((b) => b.mint), w, spend, 100)).transactions);
+  } else if (buying) {
+    ixs.push(...(await deskBuyIxs(L, wallet, buys)).ixs);
+    deskSigned = true;
+  }
   const wrap = BigInt(q.wrapLamports);
   if (wrap > 0n) {
     // Wrap just enough SOL for the SOL leg.
@@ -155,12 +262,31 @@ export async function planCreate(L: League, req: CreateRequest): Promise<TxPlan>
     const ata = getAssociatedTokenAddressSync(sol, wallet, true, TOKEN_PROGRAM_ID);
     ixs.push(ensureAtaIx(wallet, wallet, sol, TOKEN_PROGRAM_ID), SystemProgram.transfer({ fromPubkey: wallet, toPubkey: ata, lamports: wrap }), createSyncNativeInstruction(ata));
   }
-  ixs.push(await L.b.enterCreator(wallet, roundId, teamKey, q.legs.map((l, i) => ({ mint: new PublicKey(l.mint), amount: BigInt(l.amountRaw), weightBps: weights[i] })), name, fee));
+  const enter = await L.b.enterCreator(wallet, roundId, teamKey, q.legs.map((l, i) => ({ mint: new PublicKey(l.mint), amount: BigInt(l.amountRaw), weightBps: weights[i] })), name, fee);
+  let transactions: string[];
+  if (!deskSigned) transactions = [...pre, await plan(L, wallet, [...ixs, enter])];
+  else {
+    // One transaction when it fits; otherwise the buy, then the lock.
+    const lut = await L.lookupTables();
+    const signedTx = async (list: TransactionInstruction[]) => {
+      const tx = await buildTx(L.io, { payer: wallet, instructions: list, lookupTables: lut, cuLimit: 600_000 });
+      tx.sign([L.faucet!]);
+      if (tx.serialize().length > 1232) throw new Error("too big for one transaction");
+      return txToBase64(tx);
+    };
+    try {
+      transactions = [await signedTx([...ixs, enter])];
+    } catch {
+      transactions = [await signedTx(ixs), await plan(L, wallet, [enter])];
+    }
+  }
+  const ticket = toUnits(round.stake, dec);
+  const bought = buying ? ` (buys $${q.buyUsd.toFixed(2)} of stocks with USDC)` : "";
   return {
-    transactions: [await plan(L, wallet, ixs)],
+    transactions,
     summary: existing
-      ? `Same basket as “${existing.name}”: you join that ETF as a co-creator. Locks $${q.usd.toFixed(2)} of stocks + a $${toUnits(round.stake, L.deployment.stakeDecimals)} ticket.`
-      : `Creates “${name}”: locks $${q.usd.toFixed(2)} of stocks + a $${toUnits(round.stake, L.deployment.stakeDecimals)} ticket.`,
+      ? `Same basket as “${existing.name}”: you join that ETF as a co-creator. Locks $${q.usd.toFixed(2)} of stocks${bought} + a $${ticket} ticket.`
+      : `Creates “${name}”: locks $${q.usd.toFixed(2)} of stocks${bought} + a $${ticket} ticket.`,
     meta: { roundId: roundId.toString(), teamKey, clone: !!existing, basketUsd: q.usd, maxUsd: q.maxUsd, amounts: q.legs.map((l) => l.amountRaw), weightsBps: weights, quote: q },
   };
 }
@@ -297,7 +423,10 @@ export async function faucet(L: League, walletStr: string): Promise<{ signature:
   if (!L.deployment.faucet || !L.faucet) throw new HttpError(404, "no faucet on this cluster");
   const wallet = pk(walletStr, "wallet");
   const bucket = Math.floor(Date.now() / 3_600_000);
-  if (!(await L.store.firstTime(`faucet/${walletStr}/${bucket}`))) throw new HttpError(429, "one faucet drip per hour");
+  if (!(await L.store.firstTime(`faucet/${walletStr}/${bucket}`))) {
+    const mins = Math.max(1, Math.ceil(((bucket + 1) * 3_600_000 - Date.now()) / 60_000));
+    throw new HttpError(429, `You've had test funds this hour. More in ${mins} min.`);
+  }
   const usdc = 100;
   const sol = 0.05;
   const stakeMint = L.b.env.stakeMint;
@@ -305,11 +434,19 @@ export async function faucet(L: League, walletStr: string): Promise<{ signature:
     ensureAtaIx(L.faucet.publicKey, wallet, stakeMint, L.b.env.stakeTokenProgram),
     createMintToInstruction(stakeMint, L.b.stakeAta(wallet), L.faucet.publicKey, BigInt(usdc * 10 ** L.deployment.stakeDecimals), [], L.b.env.stakeTokenProgram),
   ];
+  // SOL for network fees, topped up when low (from the faucet's own SOL
+  // while it has plenty, otherwise from the cluster's airdrop).
   const solAcc = await L.io.getAccount(wallet);
-  if ((solAcc?.lamports ?? 0) < 0.02e9) ixs.push(SystemProgram.transfer({ fromPubkey: L.faucet.publicKey, toPubkey: wallet, lamports: sol * 1e9 }));
+  const needSol = (solAcc?.lamports ?? 0) < 0.03e9;
+  const deskSol = (await L.io.getAccount(L.faucet.publicKey))?.lamports ?? 0;
+  const fromDesk = needSol && deskSol > 0.5e9;
+  if (fromDesk) ixs.push(SystemProgram.transfer({ fromPubkey: L.faucet.publicKey, toPubkey: wallet, lamports: sol * 1e9 }));
   const tx = await buildTx(L.io, { payer: L.faucet.publicKey, instructions: ixs });
   tx.sign([L.faucet]);
-  return { signature: await L.io.send(tx), usdc, sol: (solAcc?.lamports ?? 0) < 0.02e9 ? sol : 0 };
+  const signature = await L.io.send(tx);
+  let gotSol = fromDesk ? sol : 0;
+  if (needSol && !fromDesk && L.io.requestAirdrop) gotSol = (await L.io.requestAirdrop(wallet, sol * 1e9).then(() => true, () => false)) ? sol : 0;
+  return { signature, usdc, sol: gotSol };
 }
 
 /** Relay a wallet-signed transaction (so the app needs no RPC of its own). */

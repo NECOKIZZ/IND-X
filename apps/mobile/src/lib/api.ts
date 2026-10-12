@@ -20,8 +20,12 @@ export interface BasketQuote {
   weights: number[];
   maxUsd: number;
   usd: number;
-  legs: { mint: string; symbol: string; weightBps: number; amountRaw: string; uiAmount: number; usd: number; heldRaw: string }[];
+  legs: { mint: string; symbol: string; weightBps: number; amountRaw: string; uiAmount: number; usd: number; heldRaw: string; buyRaw: string; buyUsd: number }[];
   wrapLamports: string;
+  /** With buy: USDC spent on the stocks the wallet is missing. */
+  buyUsd: number;
+  /** The wallet's USDC. */
+  usdcUsd: number;
 }
 
 export interface PoolView {
@@ -64,7 +68,7 @@ export const api = {
   verify: (round: string) => call<{ matches: boolean; onChainHash: string; recomputedHash: string }>(`/v1/rounds/${round}/verify`),
 
   /** Exactly what a create transaction would lock (the server builds the tx from the same function). */
-  quote: (r: { wallet?: string; legs: CreateRequest["legs"]; usd?: number }) => call<BasketQuote>("/v1/basket/quote", r),
+  quote: (r: { wallet?: string; legs: CreateRequest["legs"]; usd?: number; buy?: boolean; useHeld?: boolean }) => call<BasketQuote>("/v1/basket/quote", r),
   planCreate: (r: CreateRequest) => call<TxPlan>("/v1/tx/create", r),
   planBack: (r: BackRequest) => call<TxPlan>("/v1/tx/back", r),
   planBuy: (r: BuyRequest) => call<TxPlan>("/v1/tx/buy", r),

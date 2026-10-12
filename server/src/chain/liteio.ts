@@ -14,7 +14,10 @@ export class LiteIO implements ChainIO {
   constructor(readonly svm: LiteSVM) {}
 
   static withProgram(programId: PublicKey, soPath: string) {
-    const svm = new LiteSVM();
+    // A plan's transactions share a blockhash and go out one after another,
+    // as on a real cluster; each send still rolls the blockhash (below) so
+    // identical transactions never collide.
+    const svm = new LiteSVM().withBlockhashCheck(false);
     svm.addProgramFromFile(addr(programId), soPath);
     return new LiteIO(svm);
   }

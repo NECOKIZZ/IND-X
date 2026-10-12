@@ -1,6 +1,7 @@
-// Build an ETF in three steps: pick 3–10 tokens, set weights, size and name
-// it. If the wallet doesn't hold enough of the basket, it can buy it here
-// first (Jupiter on mainnet, the test desk on testnet).
+// Build an ETF in three steps: pick 3–10 tokens, set weights, then say how
+// much USDC to put in and name it. The stocks are bought for you in the same
+// approval (Jupiter on mainnet, the test desk on testnet) and only that
+// amount is locked; nothing else in the wallet is touched.
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -11,7 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { AssetView } from "@indx/core";
 import { brand, palette, radius, signColor, space, TAB_BAR_SPACE, type, useColors } from "@/theme";
 import { useAssets, useConfig, useRound, useWalletView } from "@/lib/queries";
-import { api, type BasketQuote } from "@/lib/api";
+import { api } from "@/lib/api";
 import { setTabBarHidden } from "@/lib/chrome";
 import { bpsToPct, pct, usd } from "@/lib/format";
 import { tap } from "@/lib/haptics";
@@ -20,7 +21,7 @@ import { AssetLogo } from "@/components/AssetLogo";
 import { PageTitle } from "@/components/Header";
 import { Icon } from "@/components/Icon";
 import { useTxAction } from "@/components/TxAction";
-import { useToast } from "@/components/Toast";
+import { useFaucet } from "@/components/useFaucet";
 import { Button, Card, Chip, Divider, Empty, IconButton, Label, Num, Row, Screen, SectionTitle, Segmented, Skeleton, Text } from "@/components/ui";
 
 type Step = "pick" | "weights" | "details";
@@ -46,7 +47,6 @@ export default function Create() {
   const { address } = useWallet();
   const walletView = useWalletView(address);
   const { run, busy } = useTxAction();
-  const toast = useToast();
 
   const [step, setStep] = useState<Step>("pick");
   const [filter, setFilter] = useState<Filter>("all");
@@ -59,12 +59,13 @@ export default function Create() {
   const { width: winW } = useWindowDimensions();
   const narrow = winW < 400;
   const tiny = winW < 300;
-  const [size, setSize] = useState<number | null>(null);
+  const [amount, setAmount] = useState(25);
+  /** The keypad is typing the amount (instead of a weight). */
+  const [typingAmount, setTypingAmount] = useState(false);
+  const [useHeld, setUseHeld] = useState(false);
   const [name, setName] = useState("");
   const [fee, setFee] = useState(100);
-  // The exact basket the transaction will lock, fetched when the user taps Review.
-  const [review, setReview] = useState<BasketQuote | null>(null);
-  const [reviewing, setReviewing] = useState(false);
+  const faucet = useFaucet();
 
   const rules = config.data?.rules;
   const minTokens = rules?.minTokens ?? 3;
@@ -85,18 +86,18 @@ export default function Create() {
             ? "Every token needs a weight"
             : null;
 
-  // What the wallet can lock, and what a given size locks: always from the
-  // server's quote, the same function that builds the transaction.
+  // What the transaction will do for this amount: always from the server's
+  // quote, the same function that builds the transaction.
   const legsReq = legs.map((a, i) => ({ mint: a.mint, weightBps: weights[i] }));
   const quoteKey = JSON.stringify(legsReq);
-  const maxQuote = useQuery({
-    queryKey: ["quote", address, quoteKey, "max"],
-    queryFn: () => api.quote({ wallet: address!, legs: legsReq }),
-    enabled: step === "details" && !!address && !weightError && legs.length >= minTokens,
-    refetchInterval: 20_000,
-  });
-  const maxUsd = maxQuote.data?.maxUsd ?? 0;
   const minUsd = rules?.minBasketUsd ?? 10;
+  const quote = useQuery({
+    queryKey: ["quote", address, quoteKey, amount, useHeld],
+    queryFn: () => api.quote({ wallet: address!, legs: legsReq, usd: amount, buy: true, useHeld }),
+    enabled: step === "details" && !!address && !weightError && legs.length >= minTokens && amount >= minUsd,
+    refetchInterval: 20_000,
+    placeholderData: (prev) => prev,
+  });
 
   const togglePick = (mint: string) => {
     tap();
@@ -118,7 +119,7 @@ export default function Create() {
 
   const header = (
     <>
-      <PageTitle title={step === "pick" ? "Pick your stocks" : step === "weights" ? "Set the weights" : "Size and name"} />
+      <PageTitle title={step === "pick" ? "Pick your stocks" : step === "weights" ? "Set the weights" : "Amount and name"} />
       <Steps step={step} />
     </>
   );
@@ -263,108 +264,104 @@ export default function Create() {
     );
   }
 
-  // --- 3. size, name, fee ---------------------------------------------------
-  const sizes = [10, 25, 50, 100].filter((s) => s <= maxUsd);
-  const chosen = size ?? (maxUsd >= minUsd ? Math.min(maxUsd, 25) : null);
-  const needBuy = !address || maxUsd < minUsd;
+  // --- 3. amount, name, fee ------------------------------------------------
   const testnet = config.data?.cluster !== "mainnet";
+  const ticket = round.data?.stakeUsd ?? 5;
+  const q = quote.data;
+  const buyUsd = q ? q.buyUsd : amount;
+  const totalUsdc = buyUsd + ticket;
+  const usdcHave = q?.usdcUsd ?? walletView.data?.usdc.uiAmount ?? 0;
+  const short = usdcHave + 1e-6 < totalUsdc;
+  const heldAny = (walletView.data?.assets ?? []).some((b) => b.uiAmount > 0 && picked.includes(b.mint));
+  const tooSmall = amount < minUsd;
+  const canCreate = !!address && !tooSmall && !short && !!name.trim() && !quote.isError;
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <Screen onRefresh={() => walletView.refetch()} bottom={TAB_BAR_SPACE + 90}>
         {header}
+
+        {/* How much goes in */}
+        <Card style={{ gap: space.md, alignItems: "center" }}>
+          <Label>You put in</Label>
+          <Pressable accessibilityLabel="Type an amount" onPress={() => (setTypingAmount(true), setTyped(""))} style={{ alignItems: "center" }}>
+            <Num v="display" color={tooSmall ? c.down : c.text} style={{ fontSize: narrow ? 44 : 52, lineHeight: narrow ? 50 : 58 }}>
+              {usd(amount, 0)}
+            </Num>
+            <Text v="small" color={c.textFaint}>
+              Tap to type an amount
+            </Text>
+          </Pressable>
+          <Row style={{ flexWrap: "wrap", justifyContent: "center" }}>
+            {[10, 25, 50, 100].map((a) => (
+              <Chip key={a} label={usd(a, 0)} selected={amount === a} onPress={() => (tap(), setAmount(a))} />
+            ))}
+          </Row>
+          <Text v="small" color={short ? c.down : c.textMuted} style={{ textAlign: "center" }}>
+            {tooSmall
+              ? `Put in at least ${usd(minUsd, 0)}`
+              : short
+                ? `You need ${usd(totalUsdc)} USDC and have ${usd(usdcHave)}`
+                : `Paid from your USDC · ${usd(usdcHave)} available`}
+          </Text>
+          {short && faucet.available ? <Button small kind="secondary" title="Get test funds" loading={faucet.busy} onPress={faucet.drip} /> : null}
+          {short && !faucet.available ? <Button small kind="secondary" title="Add USDC" onPress={() => router.push("/receive")} /> : null}
+        </Card>
+
+        {/* What it buys, exactly */}
+        <SectionTitle title="What you get" />
         <Card style={{ gap: space.md }}>
-          <Label>Your basket</Label>
           <View style={{ flexDirection: "row", height: 8, borderRadius: 4, overflow: "hidden", gap: 2 }}>
             {legs.map((a, i) => (
               <View key={a.mint} style={{ flex: weights[i], backgroundColor: LEG_COLORS[i % LEG_COLORS.length] }} />
             ))}
           </View>
-          <Row style={{ flexWrap: "wrap" }} gap={space.md}>
-            {legs.map((a, i) => (
-              <Row key={a.mint} gap={6}>
+          {legs.map((a, i) => {
+            const l = q?.legs.find((x) => x.mint === a.mint);
+            const estUsd = (amount * (weights[i] ?? 0)) / 10_000;
+            return (
+              <Row key={a.mint} gap={space.sm}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: LEG_COLORS[i % LEG_COLORS.length] }} />
-                <Text v="small">
-                  {a.ticker} <Text v="small" color={c.textMuted}>{bpsToPct(weights[i])}</Text>
-                </Text>
-              </Row>
-            ))}
-          </Row>
-        </Card>
-
-        <SectionTitle title="Size" />
-        {!address ? (
-          <Card style={{ gap: space.md }}>
-            <Text color={c.textMuted}>Connect a wallet to see how much of this basket you can lock.</Text>
-            <Button title="Connect a wallet" onPress={() => router.push("/connect")} />
-          </Card>
-        ) : needBuy ? (
-          <Card style={{ gap: space.md }}>
-            <View>
-              <Label>You hold</Label>
-              <Num v="hero">{usd(maxUsd)}</Num>
-              <Text v="small" color={c.textMuted}>
-                of this basket at these weights. You need at least {usd(minUsd, 0)} to enter.
-              </Text>
-            </View>
-            <Row style={{ flexWrap: "wrap" }}>
-              {[15, 30, 60].map((s) => (
-                <Button key={s} small kind="secondary" title={`Buy ${usd(s, 0)}`} loading={busy} onPress={() => run((w) => api.planBuy({ wallet: w, legs: legsReq, usd: s }), `Bought ${usd(s, 0)} of your basket`)} />
-              ))}
-            </Row>
-            <Text v="small" color={c.textFaint}>
-              {testnet ? "Testnet: bought with test USDC at live prices." : "Swapped from USDC through Jupiter."}
-            </Text>
-          </Card>
-        ) : (
-          <Card style={{ gap: space.md }}>
-            <Row style={{ flexWrap: "wrap" }}>
-              {sizes.map((s) => (
-                <Chip key={s} label={usd(s, 0)} selected={chosen === s} onPress={() => (setSize(s), setReview(null))} />
-              ))}
-              <Chip label={`Max ${usd(maxUsd, 0)}`} selected={chosen === maxUsd} onPress={() => (setSize(maxUsd), setReview(null))} />
-            </Row>
-            <Text v="small" color={c.textMuted}>
-              The locked stocks are your ETF and come back after the round, whatever happens. Only the {usd(round.data?.stakeUsd ?? 5, 0)} ticket is at stake.
-            </Text>
-          </Card>
-        )}
-
-        {review ? (
-          <>
-            <SectionTitle title="You’re about to lock" />
-            <Card style={{ gap: space.md }}>
-              {review.legs.map((l, i) => (
-                <Row key={l.mint} style={{ justifyContent: "space-between" }}>
-                  <Row gap={6}>
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: LEG_COLORS[i % LEG_COLORS.length] }} />
-                    <Text v="bodyStrong">{byMint.get(l.mint)?.ticker ?? l.symbol}</Text>
-                  </Row>
-                  <Text v="small" color={c.textMuted}>
-                    {l.uiAmount.toFixed(l.uiAmount < 1 ? 5 : 3)} · <Text v="smallStrong">{usd(l.usd)}</Text>
+                {tiny ? null : <AssetLogo uri={a.logo} ticker={a.ticker} size={24} />}
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text v="bodyStrong" numberOfLines={1}>
+                    {a.ticker} <Text v="small" color={c.textMuted}>{bpsToPct(weights[i])}</Text>
                   </Text>
-                </Row>
-              ))}
-              <Divider />
-              <Row style={{ justifyContent: "space-between" }}>
-                <Text v="bodyStrong">Basket</Text>
-                <Num v="bodyStrong">{usd(review.usd)}</Num>
-              </Row>
-              <Row style={{ justifyContent: "space-between" }}>
-                <Text color={c.textMuted}>Ticket (at stake)</Text>
-                <Num>{usd(round.data?.stakeUsd ?? 5)}</Num>
-              </Row>
-              {BigInt(review.wrapLamports) > 0n ? (
-                <Text v="small" color={c.textMuted}>
-                  Includes wrapping {(Number(review.wrapLamports) / 1e9).toFixed(4)} SOL from your wallet (gas is kept aside).
+                </View>
+                <Text v="small" color={c.textMuted} numberOfLines={1}>
+                  {l ? `${l.uiAmount.toFixed(l.uiAmount < 1 ? 5 : 3)} · ` : ""}
+                  <Text v="smallStrong">{usd(l?.usd ?? estUsd)}</Text>
                 </Text>
-              ) : null}
-              <Text v="small" color={c.textFaint}>
-                These are the exact amounts your wallet will sign for. Anything else in your wallet stays there.
+              </Row>
+            );
+          })}
+          <Divider />
+          <Row style={{ justifyContent: "space-between" }}>
+            <Text color={c.textMuted}>{useHeld && q && q.buyUsd + 0.005 < q.usd ? "Stocks to buy (rest from your wallet)" : "Stocks, bought for you"}</Text>
+            <Num>{usd(buyUsd)}</Num>
+          </Row>
+          <Row style={{ justifyContent: "space-between" }}>
+            <Text color={c.textMuted}>Ticket (at stake)</Text>
+            <Num>{usd(ticket)}</Num>
+          </Row>
+          <Row style={{ justifyContent: "space-between" }}>
+            <Text v="bodyStrong">Total from USDC</Text>
+            <Num v="bodyStrong">{usd(totalUsdc)}</Num>
+          </Row>
+          {heldAny ? (
+            <Pressable onPress={() => (tap(), setUseHeld((u) => !u))} style={{ flexDirection: "row", alignItems: "center", gap: space.sm, paddingTop: space.xs }}>
+              <View style={{ width: 22, height: 22, borderRadius: 6, borderWidth: useHeld ? 0 : 1.5, borderColor: c.border, backgroundColor: useHeld ? c.primary : "transparent", alignItems: "center", justifyContent: "center" }}>
+                {useHeld ? <Icon name="check" size={13} color={c.onPrimary} strokeWidth={2.4} /> : null}
+              </View>
+              <Text v="small" style={{ flex: 1 }}>
+                Use stocks I already hold first (only up to this amount)
               </Text>
-            </Card>
-          </>
-        ) : null}
+            </Pressable>
+          ) : null}
+          <Text v="small" color={c.textFaint}>
+            {testnet ? "Testnet: swapped from test USDC at live prices." : "Swapped from USDC through Jupiter."} Only {usd(amount, 0)} of stocks is locked, and it comes back after the round whatever happens. Nothing else in your wallet is touched.
+          </Text>
+        </Card>
 
         <SectionTitle title="Name" />
         <TextInput
@@ -373,7 +370,7 @@ export default function Create() {
           value={name}
           onChangeText={(t) => setName(t.slice(0, 32))}
           maxLength={32}
-          style={[type.title, { color: c.text, paddingVertical: space.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.border }]}
+          style={[type.title, { color: c.text, paddingVertical: space.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.border, outlineWidth: 0 }]}
         />
 
         <SectionTitle title="Your fee when people buy it" />
@@ -386,20 +383,32 @@ export default function Create() {
           You also earn {rules?.creatorFeePct ?? 10}% of what your backers win. Beat {brand.line} to win the tickets below it.
         </Text>
       </Screen>
-      <ActionBar>
-        <Row>
-          <Button title="Back" kind="secondary" onPress={() => (review ? setReview(null) : setStep("weights"))} />
-          {review ? (
+      {typingAmount ? (
+        <Keypad
+          actionTitle="Done"
+          onDigit={(d) => {
+            const next = (typed + d).replace(/^0+(?=\d)/, "").slice(0, 5);
+            setTyped(next);
+            setAmount(Number(next) || 0);
+          }}
+          onClose={() => setTypingAmount(false)}
+          onReview={() => setTypingAmount(false)}
+          reviewDisabled={false}
+        />
+      ) : (
+        <ActionBar>
+          <Row>
+            <Button title="Back" kind="secondary" onPress={() => setStep("weights")} />
             <Button
-              title={`Confirm & sign · ${usd((review.usd ?? 0) + (round.data?.stakeUsd ?? 5))}`}
+              title={!name.trim() ? "Name your ETF" : `Create · ${usd(totalUsdc)}`}
               style={{ flex: 1 }}
+              disabled={!canCreate}
               loading={busy}
               onPress={() =>
                 run(
-                  (w) => api.planCreate({ wallet: w, legs: legsReq, usd: review.usd, name: name.trim(), buyFeeBps: fee }),
+                  (w) => api.planCreate({ wallet: w, legs: legsReq, usd: amount, buy: true, useHeld, name: name.trim(), buyFeeBps: fee }),
                   "You’re in. Good luck.",
                   (plan) => {
-                    setReview(null);
                     setStep("pick");
                     setPicked([]);
                     setName("");
@@ -408,27 +417,9 @@ export default function Create() {
                 )
               }
             />
-          ) : (
-            <Button
-              title="Review"
-              icon="arrow"
-              style={{ flex: 1 }}
-              disabled={!address || needBuy || !name.trim() || chosen === null}
-              loading={reviewing}
-              onPress={async () => {
-                setReviewing(true);
-                try {
-                  setReview(await api.quote({ wallet: address!, legs: legsReq, usd: chosen ?? undefined }));
-                } catch (e) {
-                  toast((e as Error).message, "error");
-                } finally {
-                  setReviewing(false);
-                }
-              }}
-            />
-          )}
-        </Row>
-      </ActionBar>
+          </Row>
+        </ActionBar>
+      )}
     </View>
   );
 }
@@ -446,7 +437,7 @@ function Steps({ step }: { step: Step }) {
 }
 
 /** Typing a weight: round glass keys 1–9, 0 alone below, and Review basket. */
-function Keypad({ onDigit, onClose, onReview, reviewDisabled }: { onDigit: (d: string) => void; onClose: () => void; onReview: () => void; reviewDisabled: boolean }) {
+function Keypad({ onDigit, onClose, onReview, reviewDisabled, actionTitle = "Review basket" }: { onDigit: (d: string) => void; onClose: () => void; onReview: () => void; reviewDisabled: boolean; actionTitle?: string }) {
   const c = useColors();
   const insets = useSafeAreaInsets();
   useEffect(() => {
@@ -487,7 +478,7 @@ function Keypad({ onDigit, onClose, onReview, reviewDisabled }: { onDigit: (d: s
         {row(["4", "5", "6"])}
         {row(["7", "8", "9"])}
         <Row style={{ justifyContent: "center" }}>{key("0")}</Row>
-        <Button title="Review basket" disabled={reviewDisabled} onPress={onReview} />
+        <Button title={actionTitle} disabled={reviewDisabled} onPress={onReview} />
       </BlurView>
     </View>
   );

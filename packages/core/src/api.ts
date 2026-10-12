@@ -233,6 +233,10 @@ export interface CreateRequest {
   usd?: number;
   name: string;
   buyFeeBps?: number;
+  /** Buy what the wallet is missing with USDC in the same approval (needs usd). */
+  buy?: boolean;
+  /** With buy: count stocks already in the wallet first (default: buy it all fresh). */
+  useHeld?: boolean;
 }
 
 export interface BackRequest {

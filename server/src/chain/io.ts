@@ -32,6 +32,8 @@ export interface ChainIO {
   now(): Promise<number>;
   slot(): Promise<number>;
   lookupTable(address: PublicKey): Promise<AddressLookupTableAccount | null>;
+  /** Test clusters: the cluster's own SOL airdrop (rate limited by the RPC). */
+  requestAirdrop?(pubkey: PublicKey, lamports: number): Promise<void>;
 }
 
 export class RpcIO implements ChainIO {
@@ -75,6 +77,11 @@ export class RpcIO implements ChainIO {
   }
   async lookupTable(address: PublicKey) {
     return (await this.connection.getAddressLookupTable(address)).value;
+  }
+  async requestAirdrop(pubkey: PublicKey, lamports: number) {
+    const sig = await this.connection.requestAirdrop(pubkey, lamports);
+    const bh = await this.connection.getLatestBlockhash();
+    await this.connection.confirmTransaction({ signature: sig, ...bh }, this.commitment);
   }
 }
 

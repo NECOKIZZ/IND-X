@@ -7,7 +7,7 @@ import * as Clipboard from "expo-clipboard";
 import { router } from "expo-router";
 import type { WalletEntryView } from "@indx/core";
 import { brand, radius, signColor, space, useColors } from "@/theme";
-import { useAssets, useConfig, useWalletView } from "@/lib/queries";
+import { useAssets, useWalletView } from "@/lib/queries";
 import { api } from "@/lib/api";
 import { pct, short, usd } from "@/lib/format";
 import { success } from "@/lib/haptics";
@@ -17,10 +17,10 @@ import { Glow } from "@/components/Glow";
 import { Avatar } from "@/components/Avatar";
 import { Icon, type IconName } from "@/components/Icon";
 import { useToast } from "@/components/Toast";
+import { useFaucet } from "@/components/useFaucet";
 import { useTxAction } from "@/components/TxAction";
 import { Button, Card, Divider, Empty, ErrorView, Label, Num, Pill, Row, Screen, SectionTitle, Segmented, Skeleton, Text } from "@/components/ui";
-import { useQueryClient } from "@tanstack/react-query";
-import { mainnetAvailable, setNetwork, useNetwork, type Network } from "@/lib/network";
+import { mainnetAvailable, reloadApp, setNetwork, useNetwork, type Network } from "@/lib/network";
 
 const STATE: Record<WalletEntryView["state"], string> = {
   entered: "Entered",
@@ -103,9 +103,7 @@ function GlassPill({ label, value, children }: { label: string; value?: string; 
 function NetworkSwitch() {
   const c = useColors();
   const toast = useToast();
-  const qc = useQueryClient();
   const network = useNetwork();
-  const { disconnect } = useWallet();
   const choose = async (n: Network) => {
     if (n === network) return;
     if (n === "mainnet" && !mainnetAvailable) {
@@ -113,11 +111,8 @@ function NetworkSwitch() {
       return;
     }
     try {
-      await disconnect();
       await setNetwork(n);
-      qc.clear();
-      toast(n === "mainnet" ? "You're on mainnet: real money. Sign in again." : "You're on testnet: test money. Sign in again.", "ok");
-      router.replace("/welcome");
+      reloadApp();
     } catch (e) {
       toast((e as Error).message, "error");
     }
@@ -139,7 +134,7 @@ function NetworkSwitch() {
         ]}
       />
       <Text v="small" color={c.textFaint}>
-        Switching network signs you out. Testnet and mainnet have separate leagues and balances.
+        Switching reloads the app. Testnet and mainnet have separate leagues and balances.
       </Text>
     </View>
   );
@@ -148,10 +143,10 @@ function NetworkSwitch() {
 export default function Portfolio() {
   const c = useColors();
   const toast = useToast();
-  const config = useConfig();
   const assets = useAssets();
   const { address, kind, disconnect } = useWallet();
   const w = useWalletView(address);
+  const faucet = useFaucet();
   const { width } = useWindowDimensions();
 
   if (!address) return <Screen>{null}</Screen>;
@@ -222,22 +217,7 @@ export default function Portfolio() {
           <Row style={{ justifyContent: "space-around" }}>
             <CircleAction icon="send" label="Send" primary onPress={() => router.push("/send")} />
             <CircleAction icon="receive" label="Receive" onPress={() => router.push("/receive")} />
-            {config.data?.faucet ? (
-              <CircleAction
-                icon="flask"
-                label="Test funds"
-                onPress={async () => {
-                  try {
-                    const r = await api.faucet(address);
-                    success();
-                    toast(`+${r.usdc} test USDC${r.sol ? ` and ${r.sol} SOL for network fees` : ""}`, "ok");
-                    await w.refetch();
-                  } catch (e) {
-                    toast((e as Error).message, "error");
-                  }
-                }}
-              />
-            ) : null}
+            {faucet.available ? <CircleAction icon="flask" label={faucet.busy ? "Sending…" : "Test funds"} onPress={faucet.drip} /> : null}
           </Row>
         </View>
       </View>
