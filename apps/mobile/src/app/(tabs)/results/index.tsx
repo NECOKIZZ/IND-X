@@ -10,7 +10,7 @@ import { useWallet } from "@/wallet/WalletProvider";
 import { PageTitle } from "@/components/Header";
 import { Glow } from "@/components/Glow";
 import { Icon } from "@/components/Icon";
-import { Card, Divider, Empty, Label, Num, Pill, Row, Screen, Segmented, Skeleton, Stat, Text } from "@/components/ui";
+import { Card, Divider, Empty, Label, Num, Pill, Row, Screen, Segmented, Skeleton, Text } from "@/components/ui";
 
 /** Counts smoothly to a new value when it changes. */
 function useTicker(target: number) {
@@ -35,23 +35,22 @@ function useTicker(target: number) {
 
 function PoolCard() {
   const pool = usePool().data;
-  if (!pool) return <Skeleton height={220} style={{ borderRadius: radius.xl, marginBottom: space.md }} />;
-  return <PoolBody seasonUsd={pool.seasonUsd} roundUsd={pool.roundUsd} />;
+  if (!pool) return <Skeleton height={180} style={{ borderRadius: radius.xl, marginBottom: space.md }} />;
+  return <PoolBody seasonUsd={pool.seasonUsd} />;
 }
 
-function PoolBody({ seasonUsd, roundUsd }: { seasonUsd: number; roundUsd: number }) {
+function PoolBody({ seasonUsd }: { seasonUsd: number }) {
   const c = useColors();
-  const total = seasonUsd + roundUsd;
-  const shown = useTicker(total);
+  const shown = useTicker(seasonUsd);
   // What it was when you opened the page, to show it growing.
-  const [first] = useState(total);
-  const grown = total - first;
+  const [first] = useState(seasonUsd);
+  const grown = seasonUsd - first;
   return (
     <View style={{ borderRadius: radius.xl, overflow: "hidden", backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, marginBottom: space.md }}>
       <Glow variant={0} />
-      <View style={{ padding: space.xl, gap: space.lg }}>
+      <View style={{ padding: space.xl, gap: space.md }}>
         <Row style={{ justifyContent: "space-between" }}>
-          <Label color={c.text}>Leaderboard pool</Label>
+          <Label color={c.text}>Season pot</Label>
           <Row gap={6}>
             <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: c.up }} />
             <Label color={c.up}>Live</Label>
@@ -61,13 +60,9 @@ function PoolBody({ seasonUsd, roundUsd }: { seasonUsd: number; roundUsd: number
           <Num v="display">{usd(shown)}</Num>
           <Text v="small" color={c.textMuted}>
             {grown > 0 ? <Text v="small" color={c.up}>{`+${usd(grown)} `}</Text> : null}
-            {grown > 0 ? "while you've been here" : "Grows with every ticket, round after round"}
+            {grown > 0 ? "while you've been here" : "Grows with every round's take"}
           </Text>
         </View>
-        <Row style={{ justifyContent: "space-between" }}>
-          <Stat label="This round" value={usd(roundUsd, 0)} />
-          <Stat label="Season pot" value={usd(seasonUsd, 2)} align="right" />
-        </Row>
       </View>
     </View>
   );

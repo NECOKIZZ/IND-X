@@ -19,6 +19,7 @@ import { Glow } from "@/components/Glow";
 import { APP_BAR_HEIGHT, AppBar } from "@/components/Header";
 import { Icon } from "@/components/Icon";
 import { useFaucet } from "@/components/useFaucet";
+import { closedReason } from "@/lib/closed";
 import { Standings } from "@/components/Standings";
 import { Sparkline } from "@/components/Sparkline";
 
@@ -105,7 +106,17 @@ function YourEntry({ r }: { r: RoundView }) {
   const faucet = useFaucet();
   if (!address) return null;
   if (!e) {
-    if (r.phase !== "open") return null;
+    if (r.phase !== "open") {
+      const why = closedReason(r);
+      return (
+        <Card style={{ marginTop: space.md, gap: 4 }}>
+          <Text v="bodyStrong">{why.title}</Text>
+          <Text v="small" color={c.textMuted}>
+            {why.body}
+          </Text>
+        </Card>
+      );
+    }
     return (
       <Row style={{ marginTop: space.md }}>
         <Button title="Build an ETF" style={{ flex: 1 }} onPress={() => router.push("/create")} />

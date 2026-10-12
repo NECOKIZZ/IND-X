@@ -218,19 +218,20 @@ export class Keeper {
       if (await this.distribute(id)) did.push(`paid out round ${id}`);
     }
 
-    const latest = cfg.roundCount > 0n ? await this.L.reader.round(cfg.roundCount) : null;
-    if (!latest || latest.status === "settled" || latest.status === "voided") {
-      if (latest && (await this.distribute(latest.id))) did.push(`paid out round ${latest.id}`);
-      if (this.opts.autoOpen) did.push(`opened round ${await this.openRound()}`);
-      return did;
-    }
-
-    // Rounds can overlap (the next one opens for entries while this one is
-    // live): move every unfinished recent round along, oldest first.
+    // Move every unfinished recent round along, oldest first (normally just
+    // one; a round opened by hand can sit beside it).
+    let running = 0;
     for (let id = cfg.roundCount > 3n ? cfg.roundCount - 3n : 1n; id <= cfg.roundCount; id++) {
-      const round = id === latest.id ? latest : await this.L.reader.round(id);
+      const round = await this.L.reader.round(id);
       if (!round || round.status === "settled" || round.status === "voided") continue;
       did.push(...(await this.advance(round, now, chainNow)));
+      const after = await this.L.reader.round(id);
+      if (after && after.status !== "settled" && after.status !== "voided") running++;
+    }
+    // The next round opens only once every round before it has finished.
+    if (running === 0) {
+      if (cfg.roundCount > 0n && (await this.distribute(cfg.roundCount))) did.push(`paid out round ${cfg.roundCount}`);
+      if (this.opts.autoOpen) did.push(`opened round ${await this.openRound()}`);
     }
     return did;
   }
