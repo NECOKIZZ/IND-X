@@ -1,0 +1,124 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IndX — Build an ETF. Beat the median. Get paid.</title>
+<meta name="description" content="IndX is a weekly stock-ETF league on Solana. Build a basket of tokenized stocks, enter with a $5 ticket, beat the median and get paid. Your stocks always come back.">
+<meta property="og:title" content="IndX — Gamified ETFs on Solana"><meta property="og:description" content="Build an ETF. Beat the median. Get paid."><meta property="og:image" content="poster.jpg">
+<link rel="icon" href="logo.svg">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../pitch/style.css">
+<style>
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+nav{position:sticky;top:0;z-index:10;background:rgba(11,12,14,.78);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;justify-content:space-between;align-items:center;height:64px;gap:12px}
+nav .links{display:flex;gap:22px;align-items:center;font-size:15px}
+nav .links a:not(.btn){color:var(--muted);text-decoration:none}nav .links a:not(.btn):hover{color:var(--text)}
+@media(max-width:720px){nav .links a:not(.btn){display:none}}
+.hero{position:relative;padding:72px 0 40px;overflow:hidden}
+.glow{position:absolute;border-radius:50%;filter:blur(90px);opacity:.5;pointer-events:none}
+.g1{width:700px;height:700px;left:-200px;top:-260px;background:radial-gradient(circle,#3c5a46,transparent 65%);animation:drift 18s ease-in-out infinite alternate}
+.g2{width:800px;height:800px;right:-300px;top:120px;background:radial-gradient(circle,#2a3a40,transparent 65%);animation:drift 22s ease-in-out infinite alternate-reverse}
+@keyframes drift{to{transform:translate(120px,80px)}}
+.hero .grid{position:relative;display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center}
+@media(max-width:900px){.hero .grid{grid-template-columns:1fr}}
+.eyebrow{display:inline-flex;gap:8px;align-items:center;padding:6px 14px;border-radius:999px;border:1px solid var(--line);font-size:13px;color:var(--muted)}
+.eyebrow b{width:7px;height:7px;border-radius:50%;background:var(--up);display:inline-block}
+h1{font-size:clamp(44px,7vw,84px);line-height:1;letter-spacing:-3px;font-weight:300;margin:20px 0 18px}
+h1 em{font-style:normal;color:var(--sage)}
+.lede{font-size:19px;line-height:29px;color:var(--muted);max-width:540px}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+.cta .btn{height:50px;padding:0 24px;border-radius:25px;font-size:16px}
+.trust{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
+.trust span{padding:7px 14px;border-radius:999px;border:1px solid var(--line);font-size:13px;color:var(--muted)}
+.video{position:relative;border-radius:28px;overflow:hidden;border:1px solid var(--line);box-shadow:0 40px 120px rgba(0,0,0,.55);background:#000}
+.video video{display:block;width:100%;height:auto}
+section.block{padding:84px 0;border-top:1px solid var(--line)}
+h2{font-size:clamp(32px,5vw,52px);letter-spacing:-1.8px;font-weight:300;margin:10px 0 18px;line-height:1.05}
+.sub{font-size:18px;line-height:28px;color:var(--muted);max-width:640px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:34px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:24px;transition:transform .3s,border-color .3s}
+.card:hover{transform:translateY(-4px);border-color:rgba(197,218,197,.28)}
+.card .n{font-size:13px;color:var(--faint);letter-spacing:1px}
+.card h3{font-size:21px;font-weight:500;margin:10px 0 8px;letter-spacing:-.3px}
+.card p{margin:0;color:var(--muted);line-height:24px;font-size:15px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}.split>*,.grid>*{min-width:0}html,body{overflow-x:hidden}
+@media(max-width:900px){.split{grid-template-columns:1fr}}
+.pay{background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:10px 20px}
+.big{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:28px}
+@media(max-width:700px){.big{grid-template-columns:1fr}}
+.big div{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:22px}
+.big b{display:block;font-size:40px;font-weight:300;letter-spacing:-1.5px;color:var(--sage)}
+.big span{color:var(--muted);font-size:14px;line-height:21px}
+.avatars{display:flex;flex-wrap:wrap;row-gap:8px;margin-top:22px;padding-left:10px}
+.avatars img{width:48px;height:48px;border-radius:50%;border:2px solid var(--ink);margin-left:-10px;animation:bob 3s ease-in-out infinite}
+.avatars img:first-child{margin-left:0}
+@keyframes bob{50%{transform:translateY(-5px)}}
+.skr{display:flex;gap:16px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:22px;margin-top:14px}
+.skr img{width:46px;height:46px;border-radius:50%}
+.final{text-align:center;padding:100px 0}
+.final h2{margin:0 auto 14px;max-width:800px}
+footer{border-top:1px solid var(--line);padding:28px 0;color:var(--faint);font-size:13px}
+footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .8s ease,transform .8s ease}.reveal.in{opacity:1;transform:none}
+</style></head><body>
+<nav><div class="wrap"><a class="mark" href="./"><i><img src="logo.svg" alt=""></i>IndX</a>
+<div class="links"><a href="#how">How it works</a><a href="#payouts">Payouts</a><a href="#seeker">Seeker</a><a href="../pitch/">Pitch</a><a class="btn" href="https://raw.githubusercontent.com/NECOKIZZ/ind-x/apk/IndX.apk">Get the app</a></div></div></nav>
+
+<header class="hero"><div class="glow g1"></div><div class="glow g2"></div>
+<div class="wrap grid">
+<div>
+<span class="eyebrow"><b></b>Live on Solana devnet · Android</span>
+<h1>Build an ETF.<br><em>Beat the median.</em><br>Get paid.</h1>
+<p class="lede">IndX is a weekly stock-ETF league on Solana. Pick a basket of real tokenized stocks, enter with a $5 ticket, and if your ETF beats the median return, you win the tickets below it. Your stocks always come back.</p>
+<div class="cta"><a class="btn" href="https://raw.githubusercontent.com/NECOKIZZ/ind-x/apk/IndX.apk">Download for Android</a><a class="btn ghost" href="../">Play in the browser</a></div>
+<div class="trust"><span>Seed Vault</span><span>Privy sign-in</span><span>xStocks</span><span>SKR</span><span>On-chain settlement</span></div>
+</div>
+<div class="video reveal"><video src="demo.mp4" poster="poster.jpg" controls playsinline preload="metadata"></video></div>
+</div></header>
+
+<section class="block" id="how"><div class="wrap">
+<div class="label">How it works</div><h2 class="reveal">One round a week.</h2>
+<p class="sub reveal">Stock picking finally has a scoreboard. Compete against real people with a real portfolio, and only risk the ticket.</p>
+<div class="cards">
+<div class="card reveal"><div class="n">01</div><h3>Build</h3><p>Pick 3–10 tokenized stocks and funds, set the weights, type an amount. One approval swaps your USDC into exactly that basket.</p></div>
+<div class="card reveal"><div class="n">02</div><h3>Or back one</h3><p>Like someone else's pick? Back it with a $5 ticket. Same basket, same result, and its creator earns 10% of what you win.</p></div>
+<div class="card reveal"><div class="n">03</div><h3>Beat the median</h3><p>Entries close Monday. Through Friday, every ETF is ranked against the round's median return. Above the line wins.</p></div>
+<div class="card reveal"><div class="n">04</div><h3>Get paid</h3><p>The program settles on-chain. Winnings and your entire basket arrive automatically. Nothing to claim.</p></div>
+</div></div></section>
+
+<section class="block" id="payouts"><div class="wrap split">
+<div><div class="label">Payouts</div><h2 class="reveal">Half the field wins. The best win big.</h2>
+<p class="sub reveal">Winners split the losing tickets, weighted by how close they finished to the top. IndX never plays against you: it's pari-mutuel, with a 10% take (half refills thin rounds through the season pot).</p>
+<div class="big"><div><b>~50%</b><span>of ETFs win every round, whatever the market does</span></div><div><b>4.6×</b><span>the best ETF's payout in a 20-ETF round</span></div><div><b>$5</b><span>the most you can lose. Your stocks come back</span></div></div></div>
+<div class="pay reveal"><table>
+<tr><th>20-ETF round</th><th>Payout on a $5 ticket</th></tr>
+<tr><td>1st</td><td class="up">$23.15</td></tr><tr><td>2nd</td><td class="up">$15.25</td></tr><tr><td>3rd</td><td class="up">$11.08</td></tr><tr><td>5th</td><td class="up">$7.41</td></tr><tr><td>10th, just above the median</td><td class="up">$5.39</td></tr><tr><td>Below the median</td><td class="down">$0</td></tr></table>
+<p class="faint" style="font-size:12px;padding:8px 2px">From the IndX settlement engine; evenly spaced returns assumed.</p></div>
+</div></section>
+
+<section class="block" id="seeker"><div class="wrap split">
+<div><div class="label">Solana Mobile</div><h2 class="reveal">Built for the Seeker.</h2>
+<p class="sub reveal">On a Seeker, sign in with Seed Vault in one tap. Anywhere else, use Phantom, Solflare or Backpack, or just Google, email or a passkey with a Privy embedded wallet. No seed phrase needed.</p>
+<div class="skr reveal"><img src="https://r2.solanamobiledappstore.com/skr/seeker.png" alt="SKR"><div><b>SKR in your ETF</b><div class="muted" style="font-size:15px;line-height:22px">The Seeker token is a basket asset in the crypto slice, priced live by Jupiter. Back your ecosystem against Apple and Nvidia.</div></div></div>
+</div>
+<div class="reveal"><div class="label">Players</div><h2 style="font-size:34px">Every player gets a blob.</h2><p class="sub">Ten moods, picked from your wallet address, the same everywhere: standings, backers, the leaderboard.</p>
+<div class="avatars"><img src="av/1.jpg" alt=""><img src="av/2.jpg" alt="" style="animation-delay:.2s"><img src="av/3.jpg" alt="" style="animation-delay:.4s"><img src="av/4.jpg" alt="" style="animation-delay:.6s"><img src="av/5.jpg" alt="" style="animation-delay:.8s"><img src="av/6.jpg" alt="" style="animation-delay:1s"><img src="av/7.jpg" alt="" style="animation-delay:1.2s"><img src="av/8.jpg" alt="" style="animation-delay:1.4s"><img src="av/9.jpg" alt="" style="animation-delay:1.6s"><img src="av/10.jpg" alt="" style="animation-delay:1.8s"></div></div>
+</div></section>
+
+<section class="block"><div class="wrap">
+<div class="label">Under the hood</div><h2 class="reveal">Fully on-chain, fully checkable.</h2>
+<div class="cards">
+<div class="card reveal"><h3>Anchor program</h3><p>Escrowed baskets, on-chain settlement, claims and voids. The program checks that the money adds up.</p></div>
+<div class="card reveal"><h3>Autonomous keeper</h3><p>Opens rounds, records prices from Pyth and Jupiter, settles and pays out. One round at a time.</p></div>
+<div class="card reveal"><h3>Verifiable rounds</h3><p>Inputs are published, their hash is stored on-chain, and every round page links its transactions on Solscan.</p></div>
+<div class="card reveal"><h3>Tested</h3><p>55 automated tests, including full rounds from open to payout on LiteSVM.</p></div>
+</div></div></section>
+
+<section class="final"><div class="wrap"><h2 class="reveal">Pick better.<br>Prove it every week.</h2>
+<p class="sub reveal" style="margin:0 auto">Free on testnet. Grab test funds in the app and play this week's round.</p>
+<div class="cta" style="justify-content:center"><a class="btn" href="https://raw.githubusercontent.com/NECOKIZZ/ind-x/apk/IndX.apk">Download the APK</a><a class="btn ghost" href="../pitch/">Read the pitch</a><a class="btn ghost" href="https://github.com/NECOKIZZ/IND-X">GitHub</a></div></div></section>
+
+<footer><div class="wrap"><span>© 2026 IndX · Testnet only (Solana devnet). Not investment advice. Tokenized stocks are not available in restricted regions, including the US.</span><span><a href="../pitch/">Pitch</a> · <a href="../pitch/IndX-Research-Report.pdf">Report</a> · <a href="https://github.com/NECOKIZZ/IND-X">GitHub</a></span></div></footer>
+<script>
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.15});
+document.querySelectorAll('.reveal').forEach((el,i)=>{el.style.transitionDelay=(i%4)*80+'ms';io.observe(el)});
+</script>
+</body></html>
