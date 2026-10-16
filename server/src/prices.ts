@@ -36,11 +36,21 @@ interface JupPrice {
   scaledUiConfig?: { multiplier: number; newMultiplier: number; newMultiplierEffectiveAt: string; usdPricePrescaled?: number };
 }
 
+/** Retries a rate-limited (429) or failing (5xx) request a few times, honoring Retry-After. */
+export async function fetchRetrying(url: string, init: RequestInit, delaysMs = [1000, 3000, 6000]): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, init);
+    if ((res.status !== 429 && res.status < 500) || attempt >= delaysMs.length) return res;
+    const after = Number(res.headers.get("retry-after"));
+    await new Promise((r) => setTimeout(r, after > 0 ? Math.min(after * 1000, 10_000) : delaysMs[attempt]));
+  }
+}
+
 export async function jupiterPrices(mints: string[]): Promise<Map<string, JupPrice>> {
   const out = new Map<string, JupPrice>();
   for (let i = 0; i < mints.length; i += 50) {
     const ids = mints.slice(i, i + 50).join(",");
-    const res = await fetch(`${jupBase()}/price/v3?ids=${ids}`, { headers: jupHeaders() });
+    const res = await fetchRetrying(`${jupBase()}/price/v3?ids=${ids}`, { headers: jupHeaders() });
     if (!res.ok) throw new Error(`Jupiter price API ${res.status}: ${await res.text()}`);
     const body = (await res.json()) as Record<string, JupPrice | null>;
     for (const [k, v] of Object.entries(body)) if (v && v.usdPrice > 0) out.set(k, v);
