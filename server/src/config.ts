@@ -4,6 +4,8 @@
 //                    lite = an in-process LiteSVM chain (no validator), for
 //                    offline demos and app development.
 //   RPC_URL          RPC endpoint (defaults per cluster)
+//   RPC_FALLBACK_URLS  comma-separated RPCs to use when RPC_URL refuses or fails
+//                    (default: the cluster's public RPC on mainnet and devnet)
 //   PUBLIC_RPC_URL   RPC the app may use directly (defaults to RPC_URL)
 //   DEPLOYMENT_FILE  JSON written by scripts/deploy.ts (default deployments/<cluster>.json)
 //   KEEPER_KEYPAIR   keeper key: a path to a keypair JSON, or the JSON array itself
@@ -49,6 +51,14 @@ export function cluster(): Cluster {
 export function rpcUrl(c = cluster()): string {
   if (process.env.RPC_URL) return process.env.RPC_URL;
   return c === "mainnet" ? "https://api.mainnet-beta.solana.com" : c === "devnet" ? "https://api.devnet.solana.com" : "http://127.0.0.1:8899";
+}
+
+/** RPCs to fall back to when RPC_URL refuses (bad key, IP rules) or is down. */
+export function rpcFallbackUrls(c = cluster()): string[] {
+  const env = process.env.RPC_FALLBACK_URLS;
+  if (env !== undefined) return env.split(",").map((u) => u.trim()).filter(Boolean);
+  const pub = c === "mainnet" ? "https://api.mainnet-beta.solana.com" : c === "devnet" ? "https://api.devnet.solana.com" : "";
+  return pub ? [pub] : [];
 }
 
 /** The mainnet deployment needs only the program; tokens are the real ones. */

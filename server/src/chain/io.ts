@@ -36,10 +36,64 @@ export interface ChainIO {
   requestAirdrop?(pubkey: PublicKey, lamports: number): Promise<void>;
 }
 
+/** Host of an RPC URL, for logs (never the path or query, which may carry an API key). */
+export const rpcHost = (url: string) => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "invalid-url";
+  }
+};
+
+/** Statuses that mean "this endpoint won't serve us right now", so try the next. */
+const failsOver = (status: number) => status === 401 || status === 403 || status === 429 || status >= 500;
+
+/** How long to stay on a fallback before trying the primary endpoint again. */
+export const PRIMARY_RETRY_MS = 5 * 60_000;
+
+/**
+ * A fetch for web3.js that sends each JSON-RPC request to the first of `urls`
+ * that answers: a refused key (401/403), rate limit (429), server error or
+ * network failure moves on to the next. It sticks with a working fallback for
+ * a few minutes, then tries the primary again.
+ */
+export function failoverFetch(urls: string[], log: (msg: string) => void = console.warn, fetchImpl: typeof fetch = fetch): typeof fetch {
+  let current = 0;
+  let since = 0;
+  return (async (_input: unknown, init?: RequestInit) => {
+    if (current !== 0 && Date.now() - since > PRIMARY_RETRY_MS) current = 0;
+    let last: Response | undefined;
+    let error: unknown;
+    for (let k = 0; k < urls.length; k++) {
+      const i = (current + k) % urls.length;
+      try {
+        const res = await fetchImpl(urls[i], init);
+        if (!failsOver(res.status)) {
+          if (i !== current) {
+            log(`rpc: ${rpcHost(urls[current])} failed, now using ${rpcHost(urls[i])}`);
+            current = i;
+            since = Date.now();
+          }
+          return res;
+        }
+        log(`rpc: ${rpcHost(urls[i])} answered ${res.status}`);
+        last = res;
+      } catch (e) {
+        log(`rpc: ${rpcHost(urls[i])} unreachable: ${(e as Error).message}`);
+        error = e;
+      }
+    }
+    if (last) return last;
+    throw error;
+  }) as typeof fetch;
+}
+
 export class RpcIO implements ChainIO {
   readonly connection: Connection;
-  constructor(url: string, private commitment: Commitment = "confirmed") {
-    this.connection = new Connection(url, commitment);
+  /** `url` and then each fallback, in order, when the one before refuses or fails. */
+  constructor(url: string, private commitment: Commitment = "confirmed", fallbacks: string[] = []) {
+    const urls = [url, ...fallbacks.filter((f) => f && f !== url)];
+    this.connection = new Connection(url, urls.length > 1 ? { commitment, fetch: failoverFetch(urls) as never } : commitment);
   }
   async getAccount(pubkey: PublicKey) {
     const a = await this.connection.getAccountInfo(pubkey);
