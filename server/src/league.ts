@@ -4,8 +4,8 @@
 import { AddressLookupTableAccount, Keypair, PublicKey } from "@solana/web3.js";
 import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { MAINNET_ASSETS } from "@indx/core";
-import { cluster, deployedAssets, keeperKeypair, leagueEnv, loadDeployment, loadKeypair, rpcUrl, type Cluster, type DeployedAsset, type Deployment } from "./config.js";
-import { RpcIO, type ChainIO } from "./chain/io.js";
+import { cluster, deployedAssets, keeperKeypair, leagueEnv, loadDeployment, loadKeypair, rpcFallbackUrls, rpcUrl, type Cluster, type DeployedAsset, type Deployment } from "./config.js";
+import { RpcIO, rpcHost, type ChainIO } from "./chain/io.js";
 import { LiteIO } from "./chain/liteio.js";
 import { Builders, DEFAULT_PROGRAM_ID } from "./chain/program.js";
 import { LeagueReader } from "./chain/reader.js";
@@ -62,7 +62,8 @@ export function league(): Promise<League> {
     if (c === "lite") return liteLeague();
     const keeper = process.env.KEEPER_KEYPAIR ? keeperKeypair() : null;
     const faucet = process.env.FAUCET_KEYPAIR ? loadKeypair(process.env.FAUCET_KEYPAIR, "FAUCET_KEYPAIR") : null;
-    return makeLeague(c, loadDeployment(c), new RpcIO(rpcUrl(c)), leagueStore(), keeper, faucet);
+    console.log(`rpc: ${[rpcUrl(c), ...rpcFallbackUrls(c)].map(rpcHost).join(" -> ")}`);
+    return makeLeague(c, loadDeployment(c), new RpcIO(rpcUrl(c), "confirmed", rpcFallbackUrls(c)), leagueStore(), keeper, faucet);
   })();
   return shared;
 }
