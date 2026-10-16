@@ -116,11 +116,26 @@ export class RpcIO implements ChainIO {
     return (await this.connection.getLatestBlockhash()).blockhash;
   }
   async send(tx: VersionedTransaction) {
-    const sig = await this.connection.sendRawTransaction(tx.serialize(), { maxRetries: 3 });
     const bh = await this.connection.getLatestBlockhash();
-    const res = await this.connection.confirmTransaction({ signature: sig, ...bh }, this.commitment);
-    if (res.value.err) throw new Error(`transaction ${sig} failed: ${JSON.stringify(res.value.err)}`);
+    const sig = await this.connection.sendRawTransaction(tx.serialize(), { maxRetries: 3 });
+    const err = await this.confirm(sig, bh.lastValidBlockHeight);
+    if (err) throw new Error(`transaction ${sig} failed: ${JSON.stringify(err)}`);
     return sig;
+  }
+  /**
+   * Wait for `sig` by polling over HTTP (web3.js's confirmTransaction opens a
+   * websocket to the primary RPC, which failover can't reroute). Returns the
+   * transaction's error, or null.
+   */
+  private async confirm(sig: string, lastValidBlockHeight: number): Promise<unknown> {
+    const want = this.commitment === "finalized" ? ["finalized"] : ["confirmed", "finalized"];
+    for (;;) {
+      const st = (await this.connection.getSignatureStatuses([sig], { searchTransactionHistory: true })).value[0];
+      if (st?.err) return st.err;
+      if (st?.confirmationStatus && want.includes(st.confirmationStatus)) return null;
+      if ((await this.connection.getBlockHeight("confirmed")) > lastValidBlockHeight) throw new Error(`transaction ${sig} expired before it confirmed`);
+      await new Promise((r) => setTimeout(r, 1000));
+    }
   }
   async now() {
     const slot = await this.connection.getSlot();
@@ -133,9 +148,9 @@ export class RpcIO implements ChainIO {
     return (await this.connection.getAddressLookupTable(address)).value;
   }
   async requestAirdrop(pubkey: PublicKey, lamports: number) {
-    const sig = await this.connection.requestAirdrop(pubkey, lamports);
     const bh = await this.connection.getLatestBlockhash();
-    await this.connection.confirmTransaction({ signature: sig, ...bh }, this.commitment);
+    const sig = await this.connection.requestAirdrop(pubkey, lamports);
+    await this.confirm(sig, bh.lastValidBlockHeight);
   }
 }
 

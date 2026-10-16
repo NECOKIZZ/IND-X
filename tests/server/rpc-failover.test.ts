@@ -61,3 +61,30 @@ describe("failoverFetch", () => {
 
   it("logs hosts only", () => expect(rpcHost(A)).toBe("primary.example"));
 });
+
+describe("fetchRetrying", () => {
+  it("retries a 429 and returns the success", async () => {
+    const { fetchRetrying } = await import("../../server/src/prices");
+    const statuses = [429, 429, 200];
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response("{}", { status: statuses.shift() }));
+    expect((await fetchRetrying("https://x.example", {}, [1, 1, 1])).status).toBe(200);
+    expect(spy).toHaveBeenCalledTimes(3);
+    spy.mockRestore();
+  });
+
+  it("gives up after the last retry", async () => {
+    const { fetchRetrying } = await import("../../server/src/prices");
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response("{}", { status: 429 }));
+    expect((await fetchRetrying("https://x.example", {}, [1])).status).toBe(429);
+    expect(spy).toHaveBeenCalledTimes(2);
+    spy.mockRestore();
+  });
+
+  it("does not retry a 4xx other than 429", async () => {
+    const { fetchRetrying } = await import("../../server/src/prices");
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response("{}", { status: 400 }));
+    expect((await fetchRetrying("https://x.example", {}, [1])).status).toBe(400);
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+});
